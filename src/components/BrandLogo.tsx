@@ -1,6 +1,5 @@
 import React from 'react';
-// @ts-ignore
-import logoUrl from '../assets/logo.png';
+import { Truck } from 'lucide-react';
 
 interface BrandLogoProps {
   variant?: 'full' | 'icon-only' | 'header' | 'login';
@@ -17,21 +16,20 @@ export function BrandLogo({
 }: BrandLogoProps) {
 
   const sizeClasses = {
-    sm: 'w-8 h-8',
-    md: 'w-12 h-12',
-    lg: 'w-16 h-16',
-    xl: 'w-20 h-20',
-    '2xl': 'w-28 h-28'
+    sm: 'w-8 h-8 rounded-lg',
+    md: 'w-12 h-12 rounded-xl',
+    lg: 'w-16 h-16 rounded-2xl',
+    xl: 'w-20 h-20 rounded-2xl',
+    '2xl': 'w-28 h-28 rounded-3xl'
   };
 
   const selectedSize = sizeClasses[iconSize || size || 'md'];
 
+  // High-fidelity Vector logo icon - replaces the broken logo.png image
   const logoIcon = (
-    <img
-      src={logoUrl}
-      alt="Pau Brasil Distribuidora Ambev"
-      className={`${selectedSize} shrink-0 object-contain`}
-    />
+    <div className={`bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 flex items-center justify-center shadow-md ${selectedSize} shrink-0`}>
+      <Truck className="w-1/2 h-1/2 text-slate-950" />
+    </div>
   );
 
   if (variant === 'icon-only') {
@@ -41,15 +39,15 @@ export function BrandLogo({
   if (variant === 'login') {
     return (
       <div className={`flex flex-col items-center text-center ${className}`} id="brand_logo_login">
-        <div className="bg-white p-2.5 rounded-2xl shadow-lg border border-slate-100 mb-4 hover:scale-105 transition-transform duration-300">
+        <div className="bg-amber-100/50 p-2.5 rounded-2xl border border-amber-200/40 mb-4 hover:scale-105 transition-transform duration-300">
           {logoIcon}
         </div>
         <div className="font-sans leading-none flex flex-col items-center">
-          <span className="text-3xl font-light tracking-wide text-slate-800">
-            PAU <span className="font-black text-[#1e5bf2]">BRASIL</span>
+          <span className="text-3xl font-black tracking-tight uppercase text-slate-950">
+            <span className="text-amber-500">PAU</span> <span className="text-slate-950">BRASIL</span>
           </span>
-          <span className="text-[10px] uppercase font-bold tracking-[0.25em] text-[#1e5bf2]/80 mt-2 block leading-none">
-            distribuidora <span className="text-amber-500 font-extrabold">ambev</span>
+          <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-slate-500 mt-2 block leading-none">
+            distribuidora <span className="text-amber-400 font-extrabold">ambev</span>
           </span>
         </div>
       </div>
@@ -59,16 +57,12 @@ export function BrandLogo({
   if (variant === 'header') {
     return (
       <div className={`flex items-center space-x-3 ${className}`} id="brand_logo_header">
-        <img
-          src={logoUrl}
-          alt="Pau Brasil"
-          className="w-9 h-9 object-contain"
-        />
+        {logoIcon}
         <div className="leading-tight">
-          <span className="font-sans font-light text-sm sm:text-base tracking-wide block text-white uppercase">
-            PAU <span className="font-black text-amber-400">BRASIL</span>
+          <span className="font-sans font-black text-base tracking-tight block text-white uppercase">
+            <span className="text-amber-400">PAU</span> <span className="text-white">BRASIL</span>
           </span>
-          <span className="font-mono text-[9px] sm:text-[10px] tracking-[0.2em] text-slate-300 uppercase block leading-none">
+          <span className="font-mono text-[9px] sm:text-[10px] tracking-[0.15em] text-slate-300 uppercase block leading-none mt-1">
             distribuidora <span className="text-amber-400 font-extrabold">ambev</span>
           </span>
         </div>
@@ -81,11 +75,11 @@ export function BrandLogo({
     <div className={`flex items-center space-x-4 ${className}`} id="brand_logo_full">
       {logoIcon}
       <div className="leading-tight">
-        <span className="font-sans font-light text-2xl tracking-wide block text-slate-800">
-          PAU <span className="font-black text-[#1e5bf2]">BRASIL</span>
+        <span className="font-sans font-black text-2xl tracking-tight block uppercase text-slate-950">
+          <span className="text-amber-500">PAU</span> <span className="text-slate-950">BRASIL</span>
         </span>
-        <span className="font-sans text-[10px] uppercase font-bold tracking-[0.25em] text-[#1e5bf2]/80 mt-1 block leading-none">
-          distribuidora <span className="text-amber-500 font-extrabold">ambev</span>
+        <span className="font-sans text-[10px] uppercase font-bold tracking-[0.2em] text-slate-500 mt-1.5 block leading-none">
+          distribuidora <span className="text-amber-400 font-extrabold">ambev</span>
         </span>
       </div>
     </div>

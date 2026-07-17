@@ -184,13 +184,7 @@ export default function Sidebar({
       category: 'SETORES DE OPERAÇÃO',
       visible: !isControleOuSupervisor && (isSupervisorOrAdmin || hasRole('validades') || hasRole('admin'))
     },
-    {
-      id: 'refugo',
-      label: 'Operação Blitz Refugo',
-      icon: <Search className="w-4 h-4 text-indigo-400" />,
-      category: 'SETORES DE OPERAÇÃO',
-      visible: !isControleOuSupervisor && (isSupervisorOrAdmin || hasRole('refugo') || hasRole('admin'))
-    },
+
     {
       id: 'empilhador',
       label: 'Operação Picking',
@@ -204,6 +198,13 @@ export default function Sidebar({
       icon: <ClipboardCheck className="w-4 h-4 text-teal-400" />,
       category: 'SETORES DE OPERAÇÃO',
       visible: !isControleOuSupervisor && (isSupervisorOrAdmin || hasRole('conferente') || hasRole('admin'))
+    },
+    {
+      id: 'aferimento-rota',
+      label: 'Retorno de Rota',
+      icon: <Truck className="w-4 h-4 text-orange-500" />,
+      category: 'SETORES DE OPERAÇÃO',
+      visible: isSupervisorOrAdmin || hasRole('aferimento') || hasRole('admin')
     },
 
     // Administrative / Core
@@ -338,10 +339,21 @@ export default function Sidebar({
       )}
 
       {/* Sidebar Layout */}
-      <aside className={`fixed md:sticky top-0 h-screen bg-[#0b0e14] border-r border-[#1c2530] flex flex-col z-50 transition-all duration-300 ${
+      <aside className={`fixed md:sticky top-0 h-screen border-r flex flex-col z-50 transition-all duration-300 ${
+        theme === 'dark'
+          ? 'bg-[#0b0e14] border-[#1c2530]'
+          : 'bg-white border-slate-200'
+      } ${
         collapsed ? 'w-[68px]' : 'w-[200px]'
       } ${mobileOpen ? 'left-0 shadow-2xl' : '-left-[200px] md:left-0'}`}>
         
+        {/* Brand Logo Header at top-left of sidebar */}
+        {!collapsed && (
+          <div className="p-4 flex items-center justify-center border-b border-slate-200 dark:border-[#1c2530]/40 flex-shrink-0">
+            <BrandLogo variant="header" />
+          </div>
+        )}
+
         {/* Mobile close toggle (positioned absolutely at top right) */}
         {mobileOpen && (
           <div className="absolute top-3 right-3 z-50 md:hidden">

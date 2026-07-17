@@ -200,6 +200,23 @@ const SEED_PICKING_COMP: PickingComparison[] = [
 
 export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardProps) {
   const [activeTab, setActiveTab] = useState<FefoPage>('executiva');
+  const [viewUnit, setViewUnit] = useState<'u' | 'he'>('u');
+
+  // Helper to convert individual units (can/bottle) to HE
+  const convertUnitsToHE = (units: number, descricao: string): number => {
+    const desc = (descricao || '').toUpperCase();
+    let volumePerUnit = 0.350; // default to 350ml in liters
+    if (desc.includes('250')) volumePerUnit = 0.250;
+    else if (desc.includes('269')) volumePerUnit = 0.269;
+    else if (desc.includes('350')) volumePerUnit = 0.350;
+    else if (desc.includes('473')) volumePerUnit = 0.473;
+    else if (desc.includes('500')) volumePerUnit = 0.500;
+    else if (desc.includes('600')) volumePerUnit = 0.600;
+    else if (desc.includes('1L') || desc.includes('1 L')) volumePerUnit = 1.0;
+    else if (desc.includes('2L') || desc.includes('2 L')) volumePerUnit = 2.0;
+    else if (desc.includes('300')) volumePerUnit = 0.300;
+    return (units * volumePerUnit) / 100;
+  };
   
   // Core dynamic datasets from firebase / localstorage
   const [validades, setValidades] = useState<ValidadeRow[]>([]);
@@ -347,7 +364,8 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
     else if (days <= 60) bracket = '31-60';
     else if (days <= 90) bracket = '61-90';
 
-    const totalUnities = (v.palhete || 0) * (v.lastro || 1) * (v.caixa || 1);
+    const totalUnitiesRaw = (v.palhete || 0) * (v.lastro || 1) * (v.caixa || 1);
+    const totalUnities = viewUnit === 'u' ? totalUnitiesRaw : Math.round(convertUnitsToHE(totalUnitiesRaw, v.descricao) * 100) / 100;
     const category = v.descricao.toLowerCase().includes('pet') ? 'PET' : 
                      v.descricao.toLowerCase().includes('lata') || v.descricao.toLowerCase().includes('lt') ? 'Lata' : 'Garrafa Retornável';
 
@@ -356,9 +374,10 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
       days,
       bracket,
       totalUnities,
+      totalUnitiesRaw,
       category,
       unitCost: 6.20, // estimated cost factor per bottle/pack
-      estimatedCost: totalUnities * 6.20
+      estimatedCost: totalUnitiesRaw * 6.20
     };
   });
 
@@ -613,6 +632,24 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
             Quadro de Ações
           </button>
         </div>
+
+        {/* Unit Selector Toggle */}
+        <div className="flex items-center bg-gray-100 p-0.5 rounded-xl border border-gray-200/60 h-[38px] shrink-0">
+          <button
+            type="button"
+            onClick={() => setViewUnit('u')}
+            className={`px-4 py-1.5 rounded-lg font-sans font-bold text-[10px] uppercase tracking-wider transition-all border-none cursor-pointer h-full ${viewUnit === 'u' ? 'bg-[#032b5e] text-white shadow-sm' : 'text-gray-500 hover:text-[#032b5e] bg-transparent'}`}
+          >
+            UNIDADE (U)
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewUnit('he')}
+            className={`px-4 py-1.5 rounded-lg font-sans font-bold text-[10px] uppercase tracking-wider transition-all border-none cursor-pointer h-full ${viewUnit === 'he' ? 'bg-[#032b5e] text-white shadow-sm' : 'text-gray-500 hover:text-[#032b5e] bg-transparent'}`}
+          >
+            HECTOLITRO (HE)
+          </button>
+        </div>
       </div>
 
       {/* CORE STATS (KPIs) - DISPLAYED REGARDLESS OF TAB */}
@@ -622,7 +659,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
             <span className="text-[8.5px] uppercase font-black tracking-widest text-gray-400 block">PRODUTOS PRÓXIMOS AO VENCIMENTO</span>
             <div className="flex items-baseline mt-2">
               <span className="text-3xl font-extrabold text-[#ef4444]">{totalRiscoUnities}</span>
-              <span className="text-[10px] font-bold text-gray-500 ml-1">u (≤90 dias)</span>
+              <span className="text-[10px] font-bold text-gray-500 ml-1">{viewUnit === 'u' ? 'u' : 'HE'} (≤90 dias)</span>
             </div>
           </div>
           <div className="border-t border-gray-100 pt-2 mt-2 text-[9px] text-gray-400 font-bold uppercase flex justify-between">
@@ -694,7 +731,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
           <div>
             <span className="text-xs font-black text-[#7c2d12] uppercase tracking-wider block">ALERTAS FEFO OPERACIONAIS AUTOMÁTICOS</span>
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-[10px] text-amber-800 font-semibold">
-              {totalVencidosUnidades > 0 && <span className="flex items-center gap-1 text-red-600">🛑 {totalVencidosUnidades} UNIDADES VENCIDAS NO ESTOQUE!</span>}
+              {totalVencidosUnidades > 0 && <span className="flex items-center gap-1 text-red-600">🛑 {totalVencidosUnidades} {viewUnit === 'u' ? 'UNIDADES' : 'HE'} VENCIDAS NO ESTOQUE!</span>}
               {totalDesviosFEFO > 0 && <span className="flex items-center gap-1">⚠️ {totalDesviosFEFO} produtos fora da estratégia FEFO no Picking.</span>}
               {actionPoints.filter(a => a.status === 'Atrasado').length > 0 && <span className="flex items-center gap-1 text-red-600">🚨 {actionPoints.filter(a => a.status === 'Atrasado').length} Ações RLP vencidas/atrasadas.</span>}
               <span>📌 Rua A apresenta excesso de remanejamentos internos (+6 movimentações).</span>
@@ -1049,7 +1086,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
 
           <div className="bg-slate-50 rounded-xl p-4 mt-5 border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
             <p className="text-gray-500 leading-relaxed max-w-2xl">
-              💡 <strong>Regra Operacional do Armazém:</strong> Diferenças acima de 200 caixas entre o estoque central e a rua de picking exigem tarefa de reposição urgente gerada automaticamente no painel do empilhador para evitar rupturas de carga de frota.
+              💡 <strong>Regra Operacional do Armazém:</strong> Diferenças acima de 200 SKUs entre o estoque central e a rua de picking exigem tarefa de reposição urgente gerada automaticamente no painel do empilhador para evitar rupturas de carga de frota.
             </p>
             <button 
               onClick={() => {
@@ -1142,7 +1179,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
                       />
                     </div>
                     <div>
-                      <label className="block text-[8.5px] font-bold text-gray-500 uppercase mb-1">Quantidade (Caixas)</label>
+                      <label className="block text-[8.5px] font-bold text-gray-500 uppercase mb-1">Quantidade (SKUs)</label>
                       <input 
                         type="number" 
                         value={newTransfer.quantidade} 
@@ -1236,7 +1273,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
                         <div key={street} className="flex flex-col gap-1 text-xs">
                           <div className="flex justify-between font-bold text-slate-700">
                             <span className="uppercase">{street}</span>
-                            <span>{total} Caixas remanejadas</span>
+                            <span>{total} SKUs remanejados</span>
                           </div>
                           <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
                             <div className={`h-full ${barColor} transition-all duration-500`} style={{ width: `${pct}%` }} />
@@ -1307,7 +1344,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
                     />
                   </div>
                   <div>
-                    <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Quantidade em Risco (Fardo/Caixas)</label>
+                    <label className="block text-[9px] font-bold text-gray-500 uppercase mb-1">Quantidade em Risco (Fardo/SKUs)</label>
                     <input 
                       type="number" 
                       value={newMeeting.quantidadeRisco} 

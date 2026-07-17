@@ -58,6 +58,7 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
   const [seeding, setSeeding] = useState(false);
   const [selectedTaskDetails, setSelectedTaskDetails] = useState<Tarefa | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<'indicadores' | 'boarda3'>('indicadores');
+  const [viewUnit, setViewUnit] = useState<'pal' | 'he'>('pal');
 
   const empresaId = empresa?.id || 'demo';
 
@@ -221,7 +222,8 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
   // KPIs calculations
   const kpis = useMemo(() => {
     const completed = tasks.filter(t => t.status === 'done');
-    const totalPallets = completed.reduce((sum, t) => sum + (t.quantidade || 0), 0);
+    const rawPallets = completed.reduce((sum, t) => sum + (t.quantidade || 0), 0);
+    const totalPallets = viewUnit === 'he' ? Math.round(rawPallets * 5.4 * 10) / 10 : rawPallets;
     
     // Average duration in minutes
     const validDurations = completed.filter(t => t.duracaoMin !== null && t.duracaoMin > 0);
@@ -245,8 +247,8 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
     const predominantMode = duranteCount === 0 && aposCount === 0 
       ? 'Nenhum' 
       : duranteCount >= aposCount 
-        ? `Durante Carregamento (${duranteCount} paletes)` 
-        : `Após Carregamento (${aposCount} paletes)`;
+        ? `Durante Carregamento (${viewUnit === 'he' ? Math.round(duranteCount * 5.4 * 10) / 10 + ' HE' : duranteCount + ' paletes'})` 
+        : `Após Carregamento (${viewUnit === 'he' ? Math.round(aposCount * 5.4 * 10) / 10 + ' HE' : aposCount + ' paletes'})`;
 
     return {
       totalTasks: tasks.length,
@@ -260,7 +262,7 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
       duranteCount,
       aposCount
     };
-  }, [tasks]);
+  }, [tasks, viewUnit]);
 
   // Chart 1: Pallets moved by Operator (Completed Only)
   const chartOperatorData = useMemo(() => {
@@ -277,9 +279,10 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
 
     return Object.values(dataMap).map(d => ({
       ...d,
+      pallets: viewUnit === 'he' ? Math.round(d.pallets * 5.4 * 10) / 10 : d.pallets,
       avgMinutesPerTask: d.tasksCount > 0 ? Math.round((d.totalMinutes / d.tasksCount) * 10) / 10 : 0
     })).sort((a, b) => b.pallets - a.pallets);
-  }, [tasks]);
+  }, [tasks, viewUnit]);
 
   // Chart 2: Top SKUs by Pallets
   const chartSkuData = useMemo(() => {
@@ -296,9 +299,13 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
     });
 
     return Object.values(dataMap)
+      .map(d => ({
+        ...d,
+        pallets: viewUnit === 'he' ? Math.round(d.pallets * 5.4 * 10) / 10 : d.pallets,
+      }))
       .sort((a, b) => b.pallets - a.pallets)
       .slice(0, 6);
-  }, [tasks]);
+  }, [tasks, viewUnit]);
 
   // Chart 3: Efficiency by Mode (Durante vs Após) - Average duration in minutes
   const chartModeEfficiency = useMemo(() => {
@@ -353,8 +360,11 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
       }
     });
 
-    return Object.values(dailyMap);
-  }, [tasks]);
+    return Object.values(dailyMap).map(d => ({
+      ...d,
+      pallets: viewUnit === 'he' ? Math.round(d.pallets * 5.4 * 10) / 10 : d.pallets,
+    }));
+  }, [tasks, viewUnit]);
 
   // Export spreadsheet xlsx
   const handleExportXLSX = () => {
@@ -437,6 +447,21 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
             </button>
           </div>
 
+          <div className="flex items-center bg-gray-800 p-0.5 rounded-lg border border-gray-700">
+            <button 
+              onClick={() => setViewUnit('pal')}
+              className={`px-3 py-1 rounded font-sans font-bold text-[9px] uppercase tracking-wider transition-all border-none cursor-pointer ${viewUnit === 'pal' ? 'bg-[#f5a623] text-[#11151c] shadow-xs' : 'text-gray-400 hover:text-white bg-transparent'}`}
+            >
+              Paletes
+            </button>
+            <button 
+              onClick={() => setViewUnit('he')}
+              className={`px-3 py-1 rounded font-sans font-bold text-[9px] uppercase tracking-wider transition-all border-none cursor-pointer ${viewUnit === 'he' ? 'bg-[#f5a623] text-[#11151c] shadow-xs' : 'text-gray-400 hover:text-white bg-transparent'}`}
+            >
+              Visão HE
+            </button>
+          </div>
+
           {tasks.length === 0 && (
             <button 
               onClick={handleGenerateSeedData}
@@ -503,11 +528,15 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
               <div className="absolute top-2 right-2 p-1.5 bg-[#151b23] rounded-lg">
                 <Package className="w-4 h-4 text-[#10b981]" />
               </div>
-              <span className="text-[10px] font-bold text-[#6a7d92] uppercase tracking-wider block">Paletes Movimentados</span>
-              <span className="text-2xl font-black text-snow block mt-1">{kpis.totalPallets}</span>
+              <span className="text-[10px] font-bold text-[#6a7d92] uppercase tracking-wider block">
+                {viewUnit === 'pal' ? 'Paletes Movimentados' : 'Volume Movimentado (HE)'}
+              </span>
+              <span className="text-2xl font-black text-snow block mt-1">
+                {kpis.totalPallets} {viewUnit === 'pal' ? 'PAL' : 'HE'}
+              </span>
               <div className="flex items-center gap-1.5 mt-2">
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#11151c] text-[#10b981]">
-                  Total consolidado de cargas concluídas
+                  {viewUnit === 'pal' ? 'Total consolidado de cargas concluídas' : 'Volume total transportado convertido em hectolitros'}
                 </span>
               </div>
             </div>
@@ -555,9 +584,9 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
             <div className="g-card p-5 flex flex-col gap-4">
               <div>
                 <h4 className="font-sans font-bold text-xs uppercase tracking-wider text-[#f5a623] flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4" /> Volume de Picking Diário (Últimos 7 dias)
+                  <TrendingUp className="w-4 h-4" /> {viewUnit === 'pal' ? 'Volume de Picking Diário (Últimos 7 dias)' : 'Volume de Picking Diário em HE (Últimos 7 dias)'}
                 </h4>
-                <p className="text-[10px] text-[#6a7d92] mt-0.5">Representação temporal de paletes devidamente entregues no picking</p>
+                <p className="text-[10px] text-[#6a7d92] mt-0.5">{viewUnit === 'pal' ? 'Representação temporal de paletes devidamente entregues no picking' : 'Representação temporal de volume em hectolitros entregue no picking'}</p>
               </div>
 
               <div className="h-64 w-full">
@@ -580,7 +609,7 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
                         labelStyle={{ color: '#6a7d92', fontSize: '10px', fontWeight: 'bold' }}
                         itemStyle={{ color: '#f5a623', fontSize: '12px' }}
                       />
-                      <Area type="monotone" dataKey="pallets" name="Paletes" stroke="#f5a623" strokeWidth={2} fillOpacity={1} fill="url(#colorPallets)" />
+                      <Area type="monotone" dataKey="pallets" name={viewUnit === 'pal' ? 'Paletes' : 'Volume (HE)'} stroke="#f5a623" strokeWidth={2} fillOpacity={1} fill="url(#colorPallets)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 )}
@@ -593,7 +622,7 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
                 <h4 className="font-sans font-bold text-xs uppercase tracking-wider text-[#f5a623] flex items-center gap-2">
                   <User className="w-4 h-4" /> Produtividade por Operador de Empilhadeira
                 </h4>
-                <p className="text-[10px] text-[#6a7d92] mt-0.5">Paletes movimentados acumulados e tempo médio operacional por operador</p>
+                <p className="text-[10px] text-[#6a7d92] mt-0.5">{viewUnit === 'pal' ? 'Paletes movimentados acumulados e tempo médio operacional por operador' : 'Volume acumulado (HE) movimentado e tempo médio operacional por operador'}</p>
               </div>
 
               <div className="h-64 w-full">
@@ -610,7 +639,7 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
                         contentStyle={{ backgroundColor: '#0e121a', borderColor: '#222d3a', borderRadius: '8px' }} 
                         labelStyle={{ color: '#6a7d92', fontSize: '10px', fontWeight: 'bold' }}
                       />
-                      <Bar yAxisId="left" dataKey="pallets" name="Paletes Movimentados" fill="#f5a623" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                      <Bar yAxisId="left" dataKey="pallets" name={viewUnit === 'pal' ? 'Paletes Movimentados' : 'Volume Movimentado (HE)'} fill="#f5a623" radius={[4, 4, 0, 0]} maxBarSize={30} />
                       <Bar yAxisId="right" dataKey="avgMinutesPerTask" name="Tempo Médio (min)" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={30} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -627,9 +656,9 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
             <div className="g-card p-5 flex flex-col gap-4">
               <div>
                 <h4 className="font-sans font-bold text-xs uppercase tracking-wider text-[#f5a623] flex items-center gap-2">
-                  <Layers className="w-4 h-4" /> Top SKUs com Maior Demanda de Abastecimento
+                  <Layers className="w-4 h-4" /> {viewUnit === 'pal' ? 'Top SKUs com Maior Demanda de Abastecimento' : 'Top SKUs com Maior Demanda em HE'}
                 </h4>
-                <p className="text-[10px] text-[#6a7d92] mt-0.5">Identificação das mercadorias de maior giro e paletes solicitados</p>
+                <p className="text-[10px] text-[#6a7d92] mt-0.5">{viewUnit === 'pal' ? 'Identificação das mercadorias de maior giro e paletes solicitados' : 'Identificação das mercadorias de maior giro e volumes de reabastecimento'}</p>
               </div>
 
               <div className="h-64 w-full">
@@ -644,7 +673,7 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
                       <Tooltip 
                         contentStyle={{ backgroundColor: '#0e121a', borderColor: '#222d3a', borderRadius: '8px' }} 
                       />
-                      <Bar dataKey="pallets" name="Paletes" fill="#10b981" radius={[0, 4, 4, 0]} maxBarSize={20} />
+                      <Bar dataKey="pallets" name={viewUnit === 'pal' ? 'Paletes' : 'Volume (HE)'} fill="#10b981" radius={[0, 4, 4, 0]} maxBarSize={20} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -685,7 +714,9 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
                         <span className="text-[9px] text-[#6a7d92] uppercase font-bold block">Durante Carregamento</span>
                         <div className="flex justify-between items-baseline mt-1">
                           <span className="text-lg font-black text-purple-400">{chartModeEfficiency[0].avgTime} min</span>
-                          <span className="text-[9px] text-[#6a7d92]">{kpis.duranteCount} paletes</span>
+                          <span className="text-[9px] text-[#6a7d92]">
+                            {viewUnit === 'pal' ? `${kpis.duranteCount} paletes` : `${Math.round(kpis.duranteCount * 5.4 * 10) / 10} HE`}
+                          </span>
                         </div>
                       </div>
 
@@ -693,7 +724,9 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
                         <span className="text-[9px] text-[#6a7d92] uppercase font-bold block">Após Carregamento</span>
                         <div className="flex justify-between items-baseline mt-1">
                           <span className="text-lg font-black text-pink-400">{chartModeEfficiency[1].avgTime} min</span>
-                          <span className="text-[9px] text-[#6a7d92]">{kpis.aposCount} paletes</span>
+                          <span className="text-[9px] text-[#6a7d92]">
+                            {viewUnit === 'pal' ? `${kpis.aposCount} paletes` : `${Math.round(kpis.aposCount * 5.4 * 10) / 10} HE`}
+                          </span>
                         </div>
                       </div>
                     </div>

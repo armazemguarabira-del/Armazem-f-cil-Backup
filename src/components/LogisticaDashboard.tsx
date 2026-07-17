@@ -66,6 +66,7 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
   const [armazemRows, setArmazemRows] = useState<ArmazemRow[]>([]);
   const [activeSubTab, setActiveSubTab] = useState<'indicadores' | 'boarda3' | 'detalhes'>('indicadores');
   const [selectedDrilldownMetric, setSelectedDrilldownMetric] = useState<string | null>(null);
+  const [viewUnit, setViewUnit] = useState<'pal' | 'he'>('pal');
 
   const handleDrilldown = (metric: string) => {
     setSelectedDrilldownMetric(metric);
@@ -284,7 +285,12 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
     const anos = new Set<string>();
 
     armazemRows.forEach(r => {
-      if (r.empilhador) empilhadores.add(r.empilhador);
+      if (r.empilhador) {
+        const cleanName = r.empilhador.split('(')[0].trim();
+        if (cleanName) {
+          empilhadores.add(cleanName);
+        }
+      }
       if (r.turno) turnos.add(r.turno);
       if (r.tipo) tipos.add(r.tipo);
       
@@ -309,7 +315,11 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
     return armazemRows.filter(r => {
       if (selectedOperacao !== 'Todos' && r.operacao !== selectedOperacao) return false;
       if (selectedTurno !== 'Todos' && r.turno !== selectedTurno) return false;
-      if (selectedEmpilhador !== 'Todos' && r.empilhador !== selectedEmpilhador) return false;
+      if (selectedEmpilhador !== 'Todos') {
+        const rowOpClean = r.empilhador?.split('(')[0].trim().toLowerCase() || '';
+        const filterOpClean = selectedEmpilhador.toLowerCase();
+        if (rowOpClean !== filterOpClean && !r.empilhador?.toLowerCase().includes(filterOpClean)) return false;
+      }
       if (selectedTipoVeiculo !== 'Todos' && r.tipo !== selectedTipoVeiculo) return false;
       
       const dt = parseRowDate(r);
@@ -569,7 +579,7 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
         tempoMedio: val.validCount > 0 ? Math.round(val.totalMin / val.validCount) : 0,
         quantidade: val.totalViagens,
         dentroMeta: val.totalViagens > 0 ? Math.round((val.dentroJanela / val.totalViagens) * 100) : 100,
-        totalPaletes: val.totalPaletes
+        totalPaletes: viewUnit === 'pal' ? val.totalPaletes : Math.round(val.totalPaletes * 5.4 * 10) / 10
       }))
       .sort((a, b) => b.totalPaletes - a.totalPaletes)
       .slice(0, 6);
@@ -875,6 +885,26 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
             </select>
           </div>
 
+          <div className="flex flex-col gap-1">
+            <label className="text-[9px] font-bold text-gray-400 uppercase">Visualização</label>
+            <div className="flex items-center bg-gray-100 p-0.5 rounded-lg border border-gray-200 h-[26px]">
+              <button
+                type="button"
+                onClick={() => setViewUnit('pal')}
+                className={`flex-1 py-1 rounded text-[10px] font-bold uppercase transition-all cursor-pointer border-none h-full ${viewUnit === 'pal' ? 'bg-[#032b5e] text-white shadow-xs' : 'text-gray-500 hover:text-[#032b5e] bg-transparent'}`}
+              >
+                PAL
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewUnit('he')}
+                className={`flex-1 py-1 rounded text-[10px] font-bold uppercase transition-all cursor-pointer border-none h-full ${viewUnit === 'he' ? 'bg-[#032b5e] text-white shadow-xs' : 'text-gray-500 hover:text-[#032b5e] bg-transparent'}`}
+              >
+                HE
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -1092,28 +1122,28 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
           </div>
         </div>
 
-        {/* KPI 8: PALETES MOVIMENTADOS */}
+        {/* KPI 8: PALETES / HE MOVIMENTADOS */}
         <div 
-          onClick={() => handleDrilldown('Paletes Movimentados')}
+          onClick={() => handleDrilldown(viewUnit === 'pal' ? 'Paletes Movimentados' : 'HE Movimentados')}
           className="bg-white p-4 rounded-xl border border-gray-200/80 shadow-xs flex flex-col justify-between hover:-translate-y-1 hover:shadow-md hover:border-indigo-400 cursor-pointer transition-all"
-          title="Clique para ver o detalhamento de paletes movimentados"
+          title={viewUnit === 'pal' ? "Clique para ver o detalhamento de paletes movimentados" : "Clique para ver o detalhamento de HE movimentados"}
         >
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">
-                PALETES MOVIMENTADOS
+                {viewUnit === 'pal' ? 'PALETES MOVIMENTADOS' : 'HE MOVIMENTADOS'}
               </span>
               <span className="text-xs" title="Ver detalhes">🔍</span>
             </div>
             <span className="text-2xl font-black tracking-tight text-[#f5a623] block mt-1.5">
-              {totalPaletesMovimentados}
+              {viewUnit === 'pal' ? totalPaletesMovimentados : Math.round(totalPaletesMovimentados * 5.4 * 10) / 10}
             </span>
             <span className="text-[9px] text-slate-500 font-bold block mt-1">
-              Média: {mediaPaletesPorViagem} /viagem
+              {viewUnit === 'pal' ? `Média: ${mediaPaletesPorViagem} /viagem` : `Média: ${Math.round(mediaPaletesPorViagem * 5.4 * 10) / 10} HE /viagem`}
             </span>
           </div>
           <div className="mt-2 border-t border-gray-100 pt-1.5 text-[9px] text-slate-400 font-medium">
-            Registros Armazém Fácil
+            {viewUnit === 'pal' ? 'Registros Armazém Fácil' : 'Hectolitros Equivalentes'}
           </div>
         </div>
 
@@ -1263,7 +1293,7 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
             <h3 className="font-sans font-black text-xs uppercase text-[#032b5e] tracking-wider mb-1">
               4. Produtividade & Eficiência dos Operadores (Empilhadores)
             </h3>
-            <span className="text-[9px] text-gray-400 font-bold block mb-4 uppercase">Volumetria de paletes movimentados e conformidade de janela por operador</span>
+            <span className="text-[9px] text-gray-400 font-bold block mb-4 uppercase">Volumetria de {viewUnit === 'pal' ? 'paletes' : 'HE'} movimentados e conformidade de janela por operador</span>
             
             <div className="h-48 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -1272,7 +1302,7 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
                   <XAxis type="number" stroke="#94a3b8" fontSize={9} tickLine={false} />
                   <YAxis type="category" dataKey="rota" stroke="#94a3b8" fontSize={9} tickLine={false} width={80} />
                   <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
-                  <Bar dataKey="totalPaletes" name="Paletes Movimentados" fill="#f5a623" radius={[0, 4, 4, 0]} barSize={12} />
+                  <Bar dataKey="totalPaletes" name={viewUnit === 'pal' ? "Paletes Movimentados" : "Hectolitros Movimentados (HE)"} fill="#f5a623" radius={[0, 4, 4, 0]} barSize={12} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

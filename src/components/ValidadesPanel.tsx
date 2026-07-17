@@ -286,9 +286,13 @@ export default function ValidadesPanel({ user, empresa }: ValidadesPanelProps) {
   const toast = (m: string) => {
     const el = document.getElementById('toast');
     if (el) {
+      el.style.background = '';
+      el.style.color = '';
       el.textContent = m;
-      el.className = 'show';
-      setTimeout(() => el.className = '', 3000);
+      el.className = 'toast show';
+      setTimeout(() => {
+        el.className = 'toast';
+      }, 3000);
     }
   };
 
@@ -480,7 +484,7 @@ export default function ValidadesPanel({ user, empresa }: ValidadesPanelProps) {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold tracking-[1px] uppercase text-[#6a7d92] text-center">Quant. Caixas</label>
+              <label className="text-[10px] font-bold tracking-[1px] uppercase text-[#6a7d92] text-center">Quant. SKUs</label>
               <input 
                 type="number"
                 min={0}
@@ -629,7 +633,7 @@ export default function ValidadesPanel({ user, empresa }: ValidadesPanelProps) {
                               <div className="flex gap-4 flex-wrap text-xs text-[#6a7d92] mt-2">
                                 {r.palhete > 0 && <span>🪵 {r.palhete} paletes</span>}
                                 {r.lastro > 0 && <span>🗃 {r.lastro} lastros</span>}
-                                {r.caixa > 0 && <span>📦 {r.caixa} caixas</span>}
+                                {r.caixa > 0 && <span>📦 {r.caixa} SKUs</span>}
                               </div>
                             </div>
                             

@@ -37,6 +37,7 @@ interface BlitzDashboardProps {
 export default function BlitzDashboard({ user, empresa, onBack }: BlitzDashboardProps) {
   const [blitzRows, setBlitzRows] = useState<BlitzRefugoRow[]>([]);
   const [activeSubTab, setActiveSubTab] = useState<'indicadores' | 'boarda3'>('indicadores');
+  const [viewUnit, setViewUnit] = useState<'pct' | 'he'>('pct');
 
   useEffect(() => {
     const companyId = empresa?.id || 'demo';
@@ -67,17 +68,32 @@ export default function BlitzDashboard({ user, empresa, onBack }: BlitzDashboard
     chartDataRefugo,
     lastMonthIdx
   } = useMemo(() => {
-    const baseColabs: Record<string, number[]> = {
+    const baseColabsPct: Record<string, number[]> = {
       'Victor': [1.8, 1.5, 1.2, 0.9],
       'Marcelo': [2.4, 2.1, 1.9, 1.7],
       'Gabriel': [0.8, 0.7, 0.9, 0.6],
       'Ozenildo': [1.3, 1.1, 0.8, 0.7]
     };
 
+    const baseColabsHE: Record<string, number[]> = {
+      'Victor': [1.4, 1.2, 1.0, 0.7],
+      'Marcelo': [2.2, 1.9, 1.7, 1.5],
+      'Gabriel': [0.6, 0.5, 0.7, 0.4],
+      'Ozenildo': [1.1, 0.9, 0.6, 0.5]
+    };
+
     blitzRows.forEach(row => {
-      const name = row.ajudante;
-      if (!name) return;
+      const nameRaw = row.ajudante;
+      if (!nameRaw) return;
+      const cleanName = nameRaw.split('(')[0].split('-')[0].trim();
+      if (!cleanName) return;
+      const name = cleanName.split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+
       const pct = row.pctRefugo || 0;
+      const def = row.totalDef || 0;
+      const he = (def * 8) / 100; // standard conversion of broken boxes
       const dateStr = row.dataISO || '';
       
       let monthIdx = 3; // Default to Junho
@@ -86,17 +102,20 @@ export default function BlitzDashboard({ user, empresa, onBack }: BlitzDashboard
       else if (dateStr.includes('-05-')) monthIdx = 2;
       else if (dateStr.includes('-06-')) monthIdx = 3;
 
-      if (!baseColabs[name]) {
-        baseColabs[name] = [1.0, 1.0, 1.0, pct];
+      if (!baseColabsPct[name]) {
+        baseColabsPct[name] = [1.0, 1.0, 1.0, pct];
+        baseColabsHE[name] = [0.8, 0.8, 0.8, he];
       } else {
-        baseColabs[name][monthIdx] = parseFloat(pct.toFixed(2));
+        baseColabsPct[name][monthIdx] = parseFloat(pct.toFixed(2));
+        baseColabsHE[name][monthIdx] = parseFloat(he.toFixed(2));
       }
     });
 
-    const colabList = Object.entries(baseColabs).map(([name, data]) => ({ name, data }));
+    const activeColabs = viewUnit === 'pct' ? baseColabsPct : baseColabsHE;
+    const colabList = Object.entries(activeColabs).map(([name, data]) => ({ name, data }));
 
     const mesesRefugo = ['Março', 'Abril', 'Maio', 'Junho'];
-    const metaRefugo = 1.0;
+    const metaRefugo = viewUnit === 'pct' ? 1.0 : 0.8;
 
     const cDataRefugo = mesesRefugo.map((mes, idx) => {
       const obj: any = { name: mes, Meta: metaRefugo };
@@ -134,7 +153,7 @@ export default function BlitzDashboard({ user, empresa, onBack }: BlitzDashboard
       chartDataRefugo: cDataRefugo,
       lastMonthIdx: lastIdx
     };
-  }, [blitzRows]);
+  }, [blitzRows, viewUnit]);
 
   const planosDeAcaoRefugo = [
     { id: 1, acao: 'Treinamento de manuseio de embalagens retornáveis', resp: 'Victor/Marcelo', status: 'Em andamento' },
@@ -221,6 +240,21 @@ export default function BlitzDashboard({ user, empresa, onBack }: BlitzDashboard
               Quadro de Ações
             </button>
           </div>
+
+          <div className="flex items-center bg-gray-100 p-0.5 rounded-lg border border-gray-200/60">
+            <button 
+              onClick={() => setViewUnit('pct')}
+              className={`px-3 py-1 rounded font-sans font-bold text-[9px] uppercase tracking-wider transition-all border-none cursor-pointer ${viewUnit === 'pct' ? 'bg-[#032b5e] text-white shadow-xs' : 'text-gray-500 hover:text-[#032b5e] bg-transparent'}`}
+            >
+              Índice (%)
+            </button>
+            <button 
+              onClick={() => setViewUnit('he')}
+              className={`px-3 py-1 rounded font-sans font-bold text-[9px] uppercase tracking-wider transition-all border-none cursor-pointer ${viewUnit === 'he' ? 'bg-[#032b5e] text-white shadow-xs' : 'text-gray-500 hover:text-[#032b5e] bg-transparent'}`}
+            >
+              Visão HE
+            </button>
+          </div>
         </div>
 
       </div>
@@ -236,13 +270,13 @@ export default function BlitzDashboard({ user, empresa, onBack }: BlitzDashboard
           <div className="bg-white p-5 rounded-xl border border-gray-200 border-l-4 border-l-[#3b82f6] flex flex-col justify-between shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] text-gray-400 font-black uppercase tracking-wider">
-                % Refugo Geral
+                {viewUnit === 'pct' ? '% Refugo Geral' : 'Volume Refugo Geral (HE)'}
               </span>
               <Target className="w-5 h-5 text-[#3b82f6]" />
             </div>
             <div>
               <span className="font-sans font-black text-3xl text-[#032b5e] block leading-none">
-                {mediaGeralRefugo.toFixed(2)}%
+                {mediaGeralRefugo.toFixed(2)}{viewUnit === 'pct' ? '%' : ' HE'}
               </span>
               <span className="text-[9px] text-gray-400 mt-1.5 block font-bold uppercase">
                 Média consolidada de 4 meses
@@ -263,7 +297,7 @@ export default function BlitzDashboard({ user, empresa, onBack }: BlitzDashboard
                 {melhorNoUltimoMes.name}
               </span>
               <span className="text-[9px] text-emerald-600 font-bold mt-1.5 block uppercase">
-                {melhorNoUltimoMes.data[lastMonthIdx].toFixed(1)}% de refugo em Junho
+                {melhorNoUltimoMes.data[lastMonthIdx].toFixed(1)}{viewUnit === 'pct' ? '%' : ' HE'} de refugo em Junho
               </span>
             </div>
           </div>
@@ -281,7 +315,7 @@ export default function BlitzDashboard({ user, empresa, onBack }: BlitzDashboard
                 {alertaNoUltimoMes.name}
               </span>
               <span className="text-[9px] text-red-600 font-bold mt-1.5 block uppercase">
-                {alertaNoUltimoMes.data[lastMonthIdx].toFixed(1)}% de refugo em Junho
+                {alertaNoUltimoMes.data[lastMonthIdx].toFixed(1)}{viewUnit === 'pct' ? '%' : ' HE'} de refugo em Junho
               </span>
             </div>
           </div>
@@ -305,7 +339,7 @@ export default function BlitzDashboard({ user, empresa, onBack }: BlitzDashboard
                 </span>
               </div>
               <span className="text-[9px] text-gray-400 mt-1.5 block font-bold uppercase">
-                Média caiu de {mediaMaio.toFixed(2)}% para {mediaJunho.toFixed(2)}%
+                Média mudou de {mediaMaio.toFixed(2)}{viewUnit === 'pct' ? '%' : ' HE'} para {mediaJunho.toFixed(2)}{viewUnit === 'pct' ? '%' : ' HE'}
               </span>
             </div>
           </div>
@@ -321,9 +355,9 @@ export default function BlitzDashboard({ user, empresa, onBack }: BlitzDashboard
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="font-sans font-black text-xs text-[#032b5e] uppercase tracking-wider">
-                    Evolução do % de Refugo por Colaborador
+                    {viewUnit === 'pct' ? 'Evolução do % de Refugo por Colaborador' : 'Evolução do Volume de Refugo (HE) por Colaborador'}
                   </h3>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase">Indicadores mensais comparados com o limite regulamentar</span>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase">{viewUnit === 'pct' ? 'Indicadores mensais comparados com o limite regulamentar' : 'Volume de perdas mensal equivalente em Hectolitros'}</span>
                 </div>
                 <Activity className="w-4 h-4 text-[#032b5e] animate-pulse" />
               </div>
@@ -344,8 +378,8 @@ export default function BlitzDashboard({ user, empresa, onBack }: BlitzDashboard
                       fontSize={10} 
                       tickLine={false} 
                       axisLine={false}
-                      tickFormatter={(v) => `${v}%`}
-                      domain={[0, 3]}
+                      tickFormatter={(v) => viewUnit === 'pct' ? `${v}%` : `${v} HE`}
+                      domain={viewUnit === 'pct' ? [0, 3] : [0, 'auto']}
                     />
                     <Tooltip 
                       contentStyle={{ 

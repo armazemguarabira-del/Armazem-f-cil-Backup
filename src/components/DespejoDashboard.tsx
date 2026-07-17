@@ -282,7 +282,12 @@ export default function DespejoDashboard({ user, empresa, onBack }: DespejoDashb
   const colaboradoresList = useMemo(() => {
     const names = new Set<string>();
     activeRows.forEach(r => {
-      if (r.operador) names.add(r.operador);
+      if (r.operador) {
+        const cleanName = r.operador.split('(')[0].trim();
+        if (cleanName) {
+          names.add(cleanName);
+        }
+      }
     });
     return Array.from(names).sort();
   }, [activeRows]);
@@ -330,8 +335,12 @@ export default function DespejoDashboard({ user, empresa, onBack }: DespejoDashb
   const filteredRows = useMemo(() => {
     return activeRows.filter(row => {
       // 1. Colaborador filter
-      if (appliedFilters.colaborador !== 'Todos' && row.operador !== appliedFilters.colaborador) {
-        return false;
+      if (appliedFilters.colaborador !== 'Todos') {
+        const rowOpClean = row.operador?.split('(')[0].trim().toLowerCase() || '';
+        const filterOpClean = appliedFilters.colaborador.toLowerCase();
+        if (rowOpClean !== filterOpClean && !row.operador?.toLowerCase().includes(filterOpClean)) {
+          return false;
+        }
       }
       // 2. Embalagem filter
       if (appliedFilters.embalagem !== 'Todos' && row.embalagem !== appliedFilters.embalagem) {
@@ -478,8 +487,8 @@ export default function DespejoDashboard({ user, empresa, onBack }: DespejoDashb
 
     return Object.keys(dataMap).map(pkg => ({
       name: pkg,
-      'Caixas': dataMap[pkg] > 0 ? dataMap[pkg] : defaultVals[pkg]
-    })).sort((a, b) => b.Caixas - a.Caixas);
+      'SKUs': dataMap[pkg] > 0 ? dataMap[pkg] : defaultVals[pkg]
+    })).sort((a, b) => b.SKUs - a.SKUs);
   }, [filteredRows]);
 
   // Chart 3: Tempo Médio por Embalagem
@@ -804,7 +813,7 @@ export default function DespejoDashboard({ user, empresa, onBack }: DespejoDashb
           <div>
             <span className="text-[10px] font-bold uppercase text-gray-400 tracking-wider block">Total</span>
             <span className="text-2xl font-black text-[#032b5e] block mt-0.5 font-mono">{stats.totalCaixas}</span>
-            <span className="text-[9px] text-rose-600 font-bold block mt-0.5">Caixas Despejadas</span>
+            <span className="text-[9px] text-rose-600 font-bold block mt-0.5">SKUs Despejados</span>
           </div>
           <div className="absolute right-0 bottom-0 translate-y-2 translate-x-2 text-gray-100 opacity-30 group-hover:scale-125 transition-transform duration-500">
             <Trash2 className="w-14 h-14" />
@@ -819,7 +828,7 @@ export default function DespejoDashboard({ user, empresa, onBack }: DespejoDashb
           <div>
             <span className="text-[10px] font-bold uppercase text-gray-400 tracking-wider block">Tempo Médio</span>
             <span className="text-2xl font-black text-[#032b5e] block mt-0.5 font-mono">{stats.tempoMedio}</span>
-            <span className="text-[9px] text-blue-600 font-bold block mt-0.5">Por caixa de garrafas</span>
+            <span className="text-[9px] text-blue-600 font-bold block mt-0.5">Por SKU de garrafas</span>
           </div>
           <div className="absolute right-0 bottom-0 translate-y-2 translate-x-2 text-gray-100 opacity-30 group-hover:scale-125 transition-transform duration-500">
             <Clock className="w-14 h-14" />
@@ -880,7 +889,7 @@ export default function DespejoDashboard({ user, empresa, onBack }: DespejoDashb
         <div className="bg-white border border-gray-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="text-xs font-black text-[#032b5e] uppercase tracking-wider">Despejos por Hora</h3>
-            <span className="text-[10px] text-gray-400 font-bold uppercase">Quantidades de caixas lançadas por faixa de horário</span>
+            <span className="text-[10px] text-gray-400 font-bold uppercase">Quantidades de SKUs lançados por faixa de horário</span>
           </div>
           <div className="h-[250px] w-full mt-4">
             <ResponsiveContainer width="100%" height="100%">
@@ -903,7 +912,7 @@ export default function DespejoDashboard({ user, empresa, onBack }: DespejoDashb
         <div className="bg-white border border-gray-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="text-xs font-black text-[#032b5e] uppercase tracking-wider">Desempenho por Embalagem</h3>
-            <span className="text-[10px] text-gray-400 font-bold uppercase">Total de caixas despejadas por embalagem</span>
+            <span className="text-[10px] text-gray-400 font-bold uppercase">Total de SKUs despejados por embalagem</span>
           </div>
           <div className="h-[250px] w-full mt-4">
             <ResponsiveContainer width="100%" height="100%">
@@ -912,7 +921,7 @@ export default function DespejoDashboard({ user, empresa, onBack }: DespejoDashb
                 <XAxis type="number" stroke="#94a3b8" tickLine={false} fontSize={10} />
                 <YAxis dataKey="name" type="category" stroke="#94a3b8" tickLine={false} width={80} fontSize={10} />
                 <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', color: '#1e293b', fontSize: '11px' }} />
-                <Bar dataKey="Caixas" fill="#f5a623" radius={[0, 4, 4, 0]} barSize={12} />
+                <Bar dataKey="SKUs" fill="#f5a623" radius={[0, 4, 4, 0]} barSize={12} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1038,7 +1047,7 @@ export default function DespejoDashboard({ user, empresa, onBack }: DespejoDashb
                       <td className="py-3 font-semibold text-gray-400">{row.data}</td>
                       <td className="py-3 font-bold text-slate-800">{row.operador || '—'}</td>
                       <td className="py-3 font-semibold text-gray-400">{row.embalagem}</td>
-                      <td className="py-3 font-bold text-amber-600 text-center">{row.quantidade} un</td>
+                      <td className="py-3 font-bold text-amber-600 text-center">{row.quantidade} cx</td>
                       <td className="py-3 text-gray-400 font-mono">{row.inicio ? row.inicio.substring(0,5) : '—'}</td>
                       <td className="py-3 text-gray-400 font-mono">{row.fim ? row.fim.substring(0,5) : '—'}</td>
                       <td className="py-3 font-mono text-slate-700 font-semibold">{row.tempo}</td>
@@ -1117,7 +1126,7 @@ export default function DespejoDashboard({ user, empresa, onBack }: DespejoDashb
                 </div>
                 <div className="flex justify-between text-xs py-1 border-b border-gray-100">
                   <span className="text-gray-400">Despejos por Hora</span>
-                  <span className="font-bold text-amber-600">{selectedRowDetails.caixasHora} cx/h</span>
+                  <span className="font-bold text-amber-600">{selectedRowDetails.caixasHora} SKU/h</span>
                 </div>
                 <div className="flex justify-between text-xs py-1 border-b border-gray-100">
                   <span className="text-gray-400">Tempo Médio Real</span>

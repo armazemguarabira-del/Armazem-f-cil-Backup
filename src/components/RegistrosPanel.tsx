@@ -148,8 +148,8 @@ export default function RegistrosPanel({ user, empresa, onNavigate }: RegistrosP
     },
     {
       id: 'refugo',
-      label: 'Operação Blitz Refugo',
-      description: 'Inspeções e auditorias em paletes destinados a descarte para resgate de embalagens boas.',
+      label: 'Operação Retorno de Rota',
+      description: 'Inspeções e acompanhamento físico para liberação e aferimento de retorno de rotas.',
       icon: Search,
       colorKey: 'indigo',
       tag: 'Qualidade'

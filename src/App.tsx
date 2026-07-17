@@ -24,6 +24,7 @@ import BlitzDashboard from './components/BlitzDashboard';
 import PickingDashboard from './components/PickingDashboard';
 import RegistrosPanel from './components/RegistrosPanel';
 import AcessosPanel from './components/AcessosPanel';
+import AferimentoModule from './aferimento/AferimentoModule';
 
 import { auth, db, isCustomFirebaseConnected } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -375,6 +376,16 @@ export default function App() {
         return <EmpilhadorPanel user={user} empresa={empresa} />;
       case 'conferente':
         return <ConferentePanel user={user} empresa={empresa} />;
+      case 'aferimento-rota':
+        return (
+          <AferimentoModule
+            armazemUser={user}
+            empresa={empresa}
+            theme={theme}
+            onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+            onExit={() => setActivePanel('visao-geral')}
+          />
+        );
       case 'registros':
         return <RegistrosPanel user={user} empresa={empresa} onNavigate={setActivePanel} />;
       case 'acessos':
@@ -411,6 +422,13 @@ export default function App() {
     };
     
     switch (panel) {
+      case 'aferimento-rota':
+        return {
+          breadcrumbs: ['Setores', 'Retorno de Rota'],
+          title: 'Retorno de Rota',
+          subtitle: 'Conferência física, reconciliação fiscal e monitoramento de retorno dos caminhões de rota.',
+          color: 'from-orange-500/10 to-transparent'
+        };
       case 'visao-geral':
         return {
           breadcrumbs: ['Início', 'Visão Geral'],
@@ -478,7 +496,7 @@ export default function App() {
         return {
           breadcrumbs: ['Setores de Operação', 'Operação Despejo'],
           title: 'Operação Despejo',
-          subtitle: 'Lançamento de caixas de garrafas e líquidos destinados a descarte.',
+          subtitle: 'Lançamento de SKUs de garrafas e líquidos destinados a descarte.',
           color: 'from-rose-500/10 to-transparent'
         };
       case 'armazem':
@@ -504,9 +522,9 @@ export default function App() {
         };
       case 'refugo':
         return {
-          breadcrumbs: ['Setores de Operação', 'Operação Blitz Refugo'],
-          title: 'Operação Blitz Refugo',
-          subtitle: 'Auditoria de caixas descartadas para detecção de itens aproveitáveis.',
+          breadcrumbs: ['Setores de Operação', 'Operação Retorno de Rota'],
+          title: 'Operação Retorno de Rota',
+          subtitle: 'Acompanhamento e aferimento de retorno de rotas de entrega e devoluções.',
           color: 'from-indigo-500/10 to-transparent'
         };
       case 'empilhador':
@@ -629,7 +647,9 @@ export default function App() {
   const headerInfo = getHeaderInfo(activePanel);
 
   return (
-    <div className="min-h-screen bg-[#07090d] text-[#e8eef5] flex flex-col md:flex-row font-sans overflow-x-hidden">
+    <div className={`min-h-screen flex flex-col md:flex-row font-sans overflow-x-hidden ${
+      theme === 'dark' ? 'bg-[#07090d] text-[#e8eef5]' : 'bg-white text-slate-800'
+    }`}>
       
       {/* Sidebar navigation */}
       <Sidebar 
@@ -644,25 +664,41 @@ export default function App() {
       />
 
       {/* Main workspace arena with smooth tab switching */}
-      <div className="flex-1 flex flex-col min-h-screen max-h-screen overflow-y-auto overflow-x-hidden w-full max-w-full">
+      <div className={`flex-1 flex flex-col min-h-screen max-h-screen overflow-y-auto overflow-x-hidden w-full max-w-full ${
+        theme === 'dark' ? 'bg-[#07090d]' : 'bg-slate-50/50'
+      }`}>
         
         {/* Workspace Top Header (Glassmorphic & Premium) */}
-        <header className="sticky top-0 z-30 bg-[#07090d]/85 backdrop-blur-md border-b border-[#1c2530] pl-14 pr-4 md:px-5 py-1 h-11 md:h-12 flex items-center justify-between gap-4">
+        <header className={`sticky top-0 z-30 backdrop-blur-md pl-14 pr-4 md:px-5 py-1 h-11 md:h-12 flex items-center justify-between gap-4 border-b ${
+          theme === 'dark' 
+            ? 'bg-[#07090d]/85 border-[#1c2530]' 
+            : 'bg-white/95 border-slate-200 shadow-sm'
+        }`}>
           <div className="flex items-center gap-3 min-w-0">
+            {/* Brand Logo icon on mobile */}
+            <div className="md:hidden flex items-center flex-shrink-0">
+              <BrandLogo variant="icon-only" size="sm" iconSize="sm" />
+            </div>
             {/* Page title */}
-            <h1 className="font-sans font-black text-xs md:text-[13px] tracking-tight text-white uppercase truncate flex-shrink-0">
+            <h1 className={`font-sans font-black text-xs md:text-[13px] tracking-tight uppercase truncate flex-shrink-0 ${
+              theme === 'dark' ? 'text-white' : 'text-slate-800'
+            }`}>
               {headerInfo.title}
             </h1>
-            <span className="hidden xl:inline text-[8px] px-1.5 py-0.5 rounded bg-[#11151c] border border-[#1c2530] text-[#6a7d92] uppercase font-bold tracking-wider">
+            <span className={`hidden xl:inline text-[8px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider border ${
+              theme === 'dark' 
+                ? 'bg-[#11151c] border-[#1c2530] text-[#6a7d92]' 
+                : 'bg-slate-100 border-slate-200 text-slate-500'
+            }`}>
               {activePanel}
             </span>
-            <div className="hidden sm:block w-[1px] h-3 bg-[#1c2530]" />
+            <div className={`hidden sm:block w-[1px] h-3 ${theme === 'dark' ? 'bg-[#1c2530]' : 'bg-slate-200'}`} />
             {/* Breadcrumbs */}
             <div className="hidden sm:flex items-center gap-1.5 text-[8.5px] uppercase font-black tracking-widest text-[#6a7d92] truncate">
               <span>{headerInfo.breadcrumbs[0]}</span>
               {headerInfo.breadcrumbs[1] && (
                 <>
-                  <span className="text-[#1c2530] font-bold">/</span>
+                  <span className={`font-bold ${theme === 'dark' ? 'text-[#1c2530]' : 'text-slate-300'}`}>/</span>
                   <span className="text-[#1e56f0]">{headerInfo.breadcrumbs[1]}</span>
                 </>
               )}
@@ -671,22 +707,28 @@ export default function App() {
 
           {/* Quick Stats / System Health widget aligned horizontally */}
           <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="text-[9px] md:text-[10px] text-white font-bold uppercase tracking-wider hidden md:block">
+            <div className={`text-[9px] md:text-[10px] font-bold uppercase tracking-wider hidden md:block ${
+              theme === 'dark' ? 'text-white' : 'text-slate-700'
+            }`}>
               Operador: <span className="text-[#1e56f0]">{user.nome?.split(' ')[0]}</span>
             </div>
             {currentTime && (
               <>
-                <div className="w-[1px] h-3.5 bg-[#1c2530] hidden md:block" />
+                <div className={`w-[1px] h-3.5 hidden md:block ${theme === 'dark' ? 'bg-[#1c2530]' : 'bg-slate-200'}`} />
                 <div className="text-[9px] text-slate-400 font-mono font-bold uppercase tracking-wider hidden md:block">
                   {currentTime}
                 </div>
               </>
             )}
-            <div className="w-[1px] h-3.5 bg-[#1c2530] hidden sm:block" />
+            <div className={`w-[1px] h-3.5 hidden sm:block ${theme === 'dark' ? 'bg-[#1c2530]' : 'bg-slate-200'}`} />
             {/* Live Indicator Widget */}
-            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#11151c] border border-[#1c2530] text-[8.5px] font-sans font-black tracking-widest text-[#6a7d92]">
+            <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[8.5px] font-sans font-black tracking-widest border ${
+              theme === 'dark' 
+                ? 'bg-[#11151c] border-[#1c2530] text-[#6a7d92]' 
+                : 'bg-slate-100 border-slate-200 text-slate-600'
+            }`}>
               <span className="w-1.5 h-1.5 rounded-full bg-[#1e56f0] animate-pulse" />
-              <span className="uppercase text-gray-300">SISTEMA ATIVO</span>
+              <span className={`uppercase ${theme === 'dark' ? 'text-gray-300' : 'text-slate-700'}`}>SISTEMA ATIVO</span>
             </div>
           </div>
         </header>
@@ -697,7 +739,7 @@ export default function App() {
           {/* Subtle decorative glow */}
           <div className={`absolute top-0 left-0 w-96 h-96 bg-gradient-to-br ${headerInfo.color} rounded-full blur-3xl pointer-events-none opacity-40 z-0`} />
 
-          <div className={`relative z-10 ${activePanel.endsWith('-dashboard') ? 'max-w-full px-1' : 'max-w-[1300px]'} mx-auto w-full transition-all duration-300`}>
+          <div className={`relative z-10 ${(activePanel.endsWith('-dashboard') || activePanel === 'aferimento-rota') ? 'max-w-full px-1' : 'max-w-[1300px]'} mx-auto w-full transition-all duration-300`}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activePanel}
