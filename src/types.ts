@@ -88,6 +88,7 @@ export interface ArmazemRow {
   placa: string;
   tipo: string;
   palhete: number;
+  pernoite?: 'D0' | 'D1' | 'D2' | 'D3' | 'D4';
   obs?: string;
   _criadoEm?: string;
 }

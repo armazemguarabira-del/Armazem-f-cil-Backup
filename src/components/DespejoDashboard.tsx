@@ -36,6 +36,7 @@ import {
 import { Usuario, Empresa, DespejoRow } from '../types';
 import { db, isCustomFirebaseConnected } from '../firebase';
 import { collection, query, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+import { generateMockDespejoRows } from '../mockDataGenerator';
 import A3BoardComponent from './A3BoardComponent';
 
 interface DespejoDashboardProps {
@@ -270,13 +271,12 @@ export default function DespejoDashboard({ user, empresa, onBack }: DespejoDashb
     return () => unsub();
   }, [empresa?.id]);
 
-  // Combine real database rows and demo rows if empty
+  // Combine real database rows and demo rows
   const activeRows = useMemo(() => {
-    if (despejoRows.length > 0) {
-      return despejoRows;
-    }
-    return DEMO_DESPEJO_ROWS;
-  }, [despejoRows]);
+    const companyId = empresa?.id || 'demo';
+    const mockRows = generateMockDespejoRows(companyId);
+    return [...despejoRows, ...mockRows];
+  }, [despejoRows, empresa?.id]);
 
   // Unique lists for the filters
   const colaboradoresList = useMemo(() => {

@@ -199,13 +199,6 @@ export default function Sidebar({
       category: 'SETORES DE OPERAÇÃO',
       visible: !isControleOuSupervisor && (isSupervisorOrAdmin || hasRole('conferente') || hasRole('admin'))
     },
-    {
-      id: 'aferimento-rota',
-      label: 'Retorno de Rota',
-      icon: <Truck className="w-4 h-4 text-orange-500" />,
-      category: 'SETORES DE OPERAÇÃO',
-      visible: isSupervisorOrAdmin || hasRole('aferimento') || hasRole('admin')
-    },
 
     // Administrative / Core
     {

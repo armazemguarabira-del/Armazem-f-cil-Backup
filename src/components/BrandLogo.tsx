@@ -1,5 +1,5 @@
 import React from 'react';
-import { Truck } from 'lucide-react';
+import { LOGO_BASE64 } from '../assets/logo';
 
 interface BrandLogoProps {
   variant?: 'full' | 'icon-only' | 'header' | 'login';
@@ -25,11 +25,13 @@ export function BrandLogo({
 
   const selectedSize = sizeClasses[iconSize || size || 'md'];
 
-  // High-fidelity Vector logo icon - replaces the broken logo.png image
   const logoIcon = (
-    <div className={`bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 flex items-center justify-center shadow-md ${selectedSize} shrink-0`}>
-      <Truck className="w-1/2 h-1/2 text-slate-950" />
-    </div>
+    <img
+      src={LOGO_BASE64}
+      alt="Pau Brasil Logo"
+      className={`${selectedSize} shrink-0 object-contain`}
+      referrerPolicy="no-referrer"
+    />
   );
 
   if (variant === 'icon-only') {
@@ -39,15 +41,15 @@ export function BrandLogo({
   if (variant === 'login') {
     return (
       <div className={`flex flex-col items-center text-center ${className}`} id="brand_logo_login">
-        <div className="bg-amber-100/50 p-2.5 rounded-2xl border border-amber-200/40 mb-4 hover:scale-105 transition-transform duration-300">
+        <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 mb-4 hover:scale-105 transition-transform duration-300 flex items-center justify-center">
           {logoIcon}
         </div>
         <div className="font-sans leading-none flex flex-col items-center">
           <span className="text-3xl font-black tracking-tight uppercase text-slate-950">
-            <span className="text-amber-500">PAU</span> <span className="text-slate-950">BRASIL</span>
+            <span className="text-[#1e56f0]">PAU</span> <span className="text-slate-950">BRASIL</span>
           </span>
           <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-slate-500 mt-2 block leading-none">
-            distribuidora <span className="text-amber-400 font-extrabold">ambev</span>
+            distribuidora <span className="text-blue-600 font-extrabold">ambev</span>
           </span>
         </div>
       </div>
@@ -57,13 +59,15 @@ export function BrandLogo({
   if (variant === 'header') {
     return (
       <div className={`flex items-center space-x-3 ${className}`} id="brand_logo_header">
-        {logoIcon}
+        <div className="bg-white/95 p-1.5 rounded-lg flex items-center justify-center shrink-0">
+          {logoIcon}
+        </div>
         <div className="leading-tight">
           <span className="font-sans font-black text-base tracking-tight block text-white uppercase">
-            <span className="text-amber-400">PAU</span> <span className="text-white">BRASIL</span>
+            <span className="text-blue-400">PAU</span> <span className="text-white">BRASIL</span>
           </span>
           <span className="font-mono text-[9px] sm:text-[10px] tracking-[0.15em] text-slate-300 uppercase block leading-none mt-1">
-            distribuidora <span className="text-amber-400 font-extrabold">ambev</span>
+            distribuidora <span className="text-blue-400 font-extrabold">ambev</span>
           </span>
         </div>
       </div>
@@ -73,13 +77,15 @@ export function BrandLogo({
   // Default 'full' variant (horizontal logo)
   return (
     <div className={`flex items-center space-x-4 ${className}`} id="brand_logo_full">
-      {logoIcon}
+      <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100 flex items-center justify-center shrink-0">
+        {logoIcon}
+      </div>
       <div className="leading-tight">
         <span className="font-sans font-black text-2xl tracking-tight block uppercase text-slate-950">
-          <span className="text-amber-500">PAU</span> <span className="text-slate-950">BRASIL</span>
+          <span className="text-[#1e56f0]">PAU</span> <span className="text-slate-950">BRASIL</span>
         </span>
         <span className="font-sans text-[10px] uppercase font-bold tracking-[0.2em] text-slate-500 mt-1.5 block leading-none">
-          distribuidora <span className="text-amber-400 font-extrabold">ambev</span>
+          distribuidora <span className="text-blue-600 font-extrabold">ambev</span>
         </span>
       </div>
     </div>

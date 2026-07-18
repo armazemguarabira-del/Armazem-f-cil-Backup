@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BarChart, 
   Bar, 
@@ -37,6 +37,7 @@ import {
 import { Usuario, Empresa, QuebraRow } from '../types';
 import { db, isCustomFirebaseConnected } from '../firebase';
 import { collection, onSnapshot, query, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { generateMockQuebras } from '../mockDataGenerator';
 import A3BoardComponent from './A3BoardComponent';
 
 interface QuebrasDashboardProps {
@@ -98,12 +99,18 @@ const DEFAULT_PLANS: ActionPlan5W2H[] = [
 ];
 
 export default function QuebrasDashboard({ user, empresa, onBack }: QuebrasDashboardProps) {
-  const [quebras, setQuebras] = useState<QuebraRow[]>([]);
+  const [actualQuebras, setActualQuebras] = useState<QuebraRow[]>([]);
   const [filterPeriodo, setFilterPeriodo] = useState<'7' | '15' | '30' | 'tudo'>('30');
   const [filterArea, setFilterArea] = useState<string>('TODAS');
   const [filterTurno, setFilterTurno] = useState<string>('TODOS');
   const [activeSubTab, setActiveSubTab] = useState<'indicadores' | 'boarda3'>('indicadores');
   const [viewUnit, setViewUnit] = useState<'cx' | 'he'>('cx');
+
+  const quebras = useMemo(() => {
+    const companyId = empresa?.id || 'demo';
+    const mockRows = generateMockQuebras(companyId);
+    return [...actualQuebras, ...mockRows];
+  }, [actualQuebras, empresa?.id]);
 
   // Convert physical boxes to HE
   const convertCxToHE = (quantidade: number, descricao: string = ''): number => {
@@ -140,7 +147,7 @@ export default function QuebrasDashboard({ user, empresa, onBack }: QuebrasDashb
   useEffect(() => {
     if (!db || !empresa?.id) {
       const saved = localStorage.getItem(`quebras_${empresa?.id || 'demo'}`);
-      if (saved) setQuebras(JSON.parse(saved));
+      if (saved) setActualQuebras(JSON.parse(saved));
       return;
     }
 
@@ -150,7 +157,7 @@ export default function QuebrasDashboard({ user, empresa, onBack }: QuebrasDashb
       const rows = snap.docs.map(doc => ({ _docId: doc.id, ...doc.data() } as QuebraRow));
       const filtered = isCustomFirebaseConnected() ? rows : rows.filter(r => r.empresaId === companyId);
       filtered.sort((a, b) => (b.dataISO || '').localeCompare(a.dataISO || ''));
-      setQuebras(filtered);
+      setActualQuebras(filtered);
     });
 
     return () => unsub();

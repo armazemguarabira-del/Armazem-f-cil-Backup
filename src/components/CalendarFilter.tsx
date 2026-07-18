@@ -99,6 +99,12 @@ export default function CalendarFilter({ startDate, endDate, onChange, className
         end = formatISO(lastDayPrev);
         break;
       }
+      case '4meses': {
+        const startOf4MonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+        start = formatISO(startOf4MonthsAgo);
+        end = formatISO(today);
+        break;
+      }
       case 'todos':
         start = '';
         end = '';
@@ -334,6 +340,12 @@ export default function CalendarFilter({ startDate, endDate, onChange, className
               className="text-[9px] font-bold text-left px-2 py-1 rounded-md text-slate-600 hover:text-[#032b5e] hover:bg-slate-50 border-none bg-transparent cursor-pointer transition-all"
             >
               Mês Passado
+            </button>
+            <button
+              onClick={() => handlePreset('4meses')}
+              className="text-[9px] font-bold text-left px-2 py-1 rounded-md text-slate-600 hover:text-[#032b5e] hover:bg-slate-50 border-none bg-transparent cursor-pointer transition-all"
+            >
+              Últimos 4 meses
             </button>
             <div className="border-t border-slate-100 my-1" />
             <button

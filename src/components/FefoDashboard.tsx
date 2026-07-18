@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BarChart, 
   Bar, 
@@ -45,6 +45,7 @@ import {
 import { Usuario, Empresa, ValidadeRow } from '../types';
 import { db, isCustomFirebaseConnected } from '../firebase';
 import { collection, onSnapshot, query } from 'firebase/firestore';
+import { generateMockValidades } from '../mockDataGenerator';
 import { PRODUCTS } from '../planosData';
 import A3BoardComponent from './A3BoardComponent';
 
@@ -219,11 +220,17 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
   };
   
   // Core dynamic datasets from firebase / localstorage
-  const [validades, setValidades] = useState<ValidadeRow[]>([]);
+  const [actualValidades, setActualValidades] = useState<ValidadeRow[]>([]);
   const [rlpMeetings, setRlpMeetings] = useState<RLPMeeting[]>([]);
   const [actionPoints, setActionPoints] = useState<ActionPoint[]>([]);
   const [stockTransfers, setStockTransfers] = useState<StockTransfer[]>([]);
   const [pickingComp, setPickingComp] = useState<PickingComparison[]>([]);
+
+  const validades = useMemo(() => {
+    const companyId = empresa?.id || 'demo';
+    const mockRows = generateMockValidades(companyId);
+    return [...actualValidades, ...mockRows];
+  }, [actualValidades, empresa?.id]);
 
   // Advanced Filters State
   const [periodFilter, setPeriodFilter] = useState<string>('30');
@@ -276,7 +283,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
     // Sync validades (dynamic)
     if (!db) {
       const saved = localStorage.getItem(`validades_${companyId}`);
-      if (saved) setValidades(JSON.parse(saved));
+      if (saved) setActualValidades(JSON.parse(saved));
       return;
     }
 
@@ -284,7 +291,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
     const unsub = onSnapshot(q, (snap) => {
       const rows = snap.docs.map(doc => ({ _docId: doc.id, ...doc.data() } as ValidadeRow));
       const filtered = isCustomFirebaseConnected() ? rows : rows.filter(r => r.empresaId === companyId);
-      setValidades(filtered);
+      setActualValidades(filtered);
     });
 
     return () => unsub();
@@ -741,7 +748,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
         <button 
           onClick={() => {
             const saved = localStorage.getItem(`validades_${companyId}`);
-            if (saved) setValidades(JSON.parse(saved));
+            if (saved) setActualValidades(JSON.parse(saved));
           }}
           className="flex items-center gap-1 text-[9px] font-black text-[#032b5e] uppercase border border-[#032b5e]/25 hover:bg-white bg-transparent px-2 py-1 rounded-lg transition-colors cursor-pointer"
         >

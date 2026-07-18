@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, query, addDoc, getDocs } from 'firebase/firestore';
 import { Usuario, Empresa, Tarefa } from '../types';
+import { generateMockTarefas } from '../mockDataGenerator';
 import { PRODUCTS } from '../planosData';
 import A3BoardComponent from './A3BoardComponent';
 import { 
@@ -49,7 +50,7 @@ interface PickingDashboardProps {
 }
 
 export default function PickingDashboard({ user, empresa, onBack }: PickingDashboardProps) {
-  const [tasks, setTasks] = useState<Tarefa[]>([]);
+  const [actualTasks, setActualTasks] = useState<Tarefa[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOperator, setSelectedOperator] = useState('all');
@@ -62,12 +63,17 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
 
   const empresaId = empresa?.id || 'demo';
 
+  const tasks = useMemo(() => {
+    const mockTasks = generateMockTarefas(empresaId);
+    return [...actualTasks, ...mockTasks];
+  }, [actualTasks, empresaId]);
+
   // Synchronize tasks from Firestore
   useEffect(() => {
     if (!db) {
       const savedTasks = localStorage.getItem(`tasks_${empresaId}`);
       if (savedTasks) {
-        setTasks(JSON.parse(savedTasks));
+        setActualTasks(JSON.parse(savedTasks));
       }
       setLoading(false);
       return;
@@ -81,7 +87,7 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
       
       // Sort: newest first
       rows.sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
-      setTasks(rows);
+      setActualTasks(rows);
       setLoading(false);
     }, (error) => {
       console.error("Error reading tasks:", error);
@@ -176,7 +182,7 @@ export default function PickingDashboard({ user, empresa, onBack }: PickingDashb
       } else {
         // Fallback local storage
         const currentLocal = [...tasks, ...seedTasksList.map((tk, idx) => ({ _docId: `seed-${Date.now()}-${idx}`, ...tk } as Tarefa))];
-        setTasks(currentLocal);
+        setActualTasks(currentLocal);
         localStorage.setItem(`tasks_${empresaId}`, JSON.stringify(currentLocal));
       }
       alert('35 tarefas demonstrativas geradas com sucesso para popular o Dashboard!');

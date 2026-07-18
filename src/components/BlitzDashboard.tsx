@@ -26,6 +26,7 @@ import {
 import { Usuario, Empresa, BlitzRefugoRow } from '../types';
 import { db, isCustomFirebaseConnected } from '../firebase';
 import { collection, query, onSnapshot } from 'firebase/firestore';
+import { generateMockBlitzRows } from '../mockDataGenerator';
 import A3BoardComponent from './A3BoardComponent';
 
 interface BlitzDashboardProps {
@@ -35,15 +36,21 @@ interface BlitzDashboardProps {
 }
 
 export default function BlitzDashboard({ user, empresa, onBack }: BlitzDashboardProps) {
-  const [blitzRows, setBlitzRows] = useState<BlitzRefugoRow[]>([]);
+  const [actualBlitzRows, setActualBlitzRows] = useState<BlitzRefugoRow[]>([]);
   const [activeSubTab, setActiveSubTab] = useState<'indicadores' | 'boarda3'>('indicadores');
   const [viewUnit, setViewUnit] = useState<'pct' | 'he'>('pct');
+
+  const blitzRows = useMemo(() => {
+    const companyId = empresa?.id || 'demo';
+    const mockRows = generateMockBlitzRows(companyId);
+    return [...actualBlitzRows, ...mockRows];
+  }, [actualBlitzRows, empresa?.id]);
 
   useEffect(() => {
     const companyId = empresa?.id || 'demo';
     if (!db) {
       const saved = localStorage.getItem(`blitz_rows_${companyId}`);
-      if (saved) setBlitzRows(JSON.parse(saved));
+      if (saved) setActualBlitzRows(JSON.parse(saved));
       return;
     }
 
@@ -51,7 +58,7 @@ export default function BlitzDashboard({ user, empresa, onBack }: BlitzDashboard
     const unsub = onSnapshot(q, (snap) => {
       const rows = snap.docs.map(doc => ({ _docId: doc.id, ...doc.data() } as BlitzRefugoRow));
       const filtered = isCustomFirebaseConnected() ? rows : rows.filter(r => r.empresaId === companyId);
-      setBlitzRows(filtered);
+      setActualBlitzRows(filtered);
     });
 
     return () => unsub();

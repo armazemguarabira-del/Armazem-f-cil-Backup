@@ -24,7 +24,6 @@ import BlitzDashboard from './components/BlitzDashboard';
 import PickingDashboard from './components/PickingDashboard';
 import RegistrosPanel from './components/RegistrosPanel';
 import AcessosPanel from './components/AcessosPanel';
-import AferimentoModule from './aferimento/AferimentoModule';
 
 import { auth, db, isCustomFirebaseConnected } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -376,16 +375,6 @@ export default function App() {
         return <EmpilhadorPanel user={user} empresa={empresa} />;
       case 'conferente':
         return <ConferentePanel user={user} empresa={empresa} />;
-      case 'aferimento-rota':
-        return (
-          <AferimentoModule
-            armazemUser={user}
-            empresa={empresa}
-            theme={theme}
-            onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-            onExit={() => setActivePanel('visao-geral')}
-          />
-        );
       case 'registros':
         return <RegistrosPanel user={user} empresa={empresa} onNavigate={setActivePanel} />;
       case 'acessos':
@@ -422,13 +411,6 @@ export default function App() {
     };
     
     switch (panel) {
-      case 'aferimento-rota':
-        return {
-          breadcrumbs: ['Setores', 'Retorno de Rota'],
-          title: 'Retorno de Rota',
-          subtitle: 'Conferência física, reconciliação fiscal e monitoramento de retorno dos caminhões de rota.',
-          color: 'from-orange-500/10 to-transparent'
-        };
       case 'visao-geral':
         return {
           breadcrumbs: ['Início', 'Visão Geral'],
@@ -739,7 +721,7 @@ export default function App() {
           {/* Subtle decorative glow */}
           <div className={`absolute top-0 left-0 w-96 h-96 bg-gradient-to-br ${headerInfo.color} rounded-full blur-3xl pointer-events-none opacity-40 z-0`} />
 
-          <div className={`relative z-10 ${(activePanel.endsWith('-dashboard') || activePanel === 'aferimento-rota') ? 'max-w-full px-1' : 'max-w-[1300px]'} mx-auto w-full transition-all duration-300`}>
+          <div className={`relative z-10 ${activePanel.endsWith('-dashboard') ? 'max-w-full px-1' : 'max-w-[1300px]'} mx-auto w-full transition-all duration-300`}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activePanel}
