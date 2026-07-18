@@ -35,7 +35,7 @@ export default function ValidadesPanel({ user, empresa }: ValidadesPanelProps) {
   const [lastro, setLastro] = useState<number>(() => getDraftValue('lastro', 0));
   const [caixa, setCaixa] = useState<number>(() => getDraftValue('caixa', 0));
   const [validade, setValidade] = useState<string>(() => getDraftValue('validade', ''));
-  const [localizacao, setLocalizacao] = useState<'picking' | 'central'>(() => getDraftValue('localizacao', 'picking'));
+  const [localizacao, setLocalizacao] = useState<'picking' | 'central' | 'marketplace'>(() => getDraftValue('localizacao', 'picking'));
 
   const [activeTab, setActiveTab] = useState<'form' | 'lista'>('form');
   const [validadesList, setValidadesList] = useState<ValidadeRow[]>([]);
@@ -514,8 +514,9 @@ export default function ValidadesPanel({ user, empresa }: ValidadesPanelProps) {
                 onChange={e => setLocalizacao(e.target.value as any)} 
                 className="g-input bg-[#151b23] border-[#1c2530]"
               >
-                <option value="picking">Picking de Separação (Baixo / Fácil acesso)</option>
-                <option value="central">Pulmão Central (Aéreo / Paletizado)</option>
+                <option value="central">Estoque central</option>
+                <option value="picking">Picking</option>
+                <option value="marketplace">Marketing place</option>
               </select>
             </div>
           </div>
@@ -548,8 +549,9 @@ export default function ValidadesPanel({ user, empresa }: ValidadesPanelProps) {
             <div className="flex flex-wrap gap-2.5 w-full sm:w-auto">
               <select value={filterLoc} onChange={e => setFilterLoc(e.target.value)} className="g-input text-xs py-2 px-3 bg-[#151b23]/80 border-[#222d3a]">
                 <option value="todos">📍 Todos os Locais</option>
+                <option value="central">Estoque central</option>
                 <option value="picking">Picking</option>
-                <option value="central">Pulmão Central</option>
+                <option value="marketplace">Marketing place</option>
               </select>
               <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="g-input text-xs py-2 px-3 bg-[#151b23]/80 border-[#222d3a]">
                 <option value="todos">🚦 Todos os Riscos</option>
@@ -627,7 +629,9 @@ export default function ValidadesPanel({ user, empresa }: ValidadesPanelProps) {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap mb-1.5">
                                 <span className="text-[9px] bg-[#151b23] border border-[#222d3a] px-2 py-0.5 rounded font-black text-[#f5a623] font-mono">{r.codigo}</span>
-                                <span className="text-[9px] bg-[#151b23] px-2 py-0.5 rounded uppercase font-bold text-[#6a7d92]">{r.localizacao}</span>
+                                <span className="text-[9px] bg-[#151b23] px-2 py-0.5 rounded uppercase font-bold text-[#6a7d92]">
+                                  {r.localizacao === 'central' ? 'Estoque central' : r.localizacao === 'picking' ? 'Picking' : 'Marketing place'}
+                                </span>
                               </div>
                               <h4 className="text-sm font-bold text-snow truncate">{r.descricao}</h4>
                               <div className="flex gap-4 flex-wrap text-xs text-[#6a7d92] mt-2">

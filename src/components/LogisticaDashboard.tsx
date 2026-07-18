@@ -173,6 +173,16 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
     return h * 60 + m;
   };
 
+  const getRowWeekday = (r: ArmazemRow) => {
+    const dt = parseRowDate(r);
+    if (dt) {
+      const d = new Date(Number(dt.year), Number(dt.month) - 1, Number(dt.day));
+      const day = d.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+      return day;
+    }
+    return -1;
+  };
+
   // CALENDAR FILTERS STATE
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -648,9 +658,130 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
   const quantidadeAcoesAbertas = acoes.filter(a => a.status !== 'Concluído').length;
 
   // Historical 4 Months Trend data (EFD and EFC evolution + Loading times)
+  // Dynamic: if date filters are active, it will adapt to show hourly or daily details
   const trend4MonthsData = useMemo(() => {
+    // Case 1: Active filters - single day (Hourly breakdown)
+    if (startDate && endDate && startDate === endDate) {
+      const hourIntervals = [
+        { label: '06h-09h', min: 360, max: 540, baseEFC: 96, baseEFD: 85, baseC: 58, baseD: 42 },
+        { label: '09h-12h', min: 540, max: 720, baseEFC: 97, baseEFD: 88, baseC: 55, baseD: 38 },
+        { label: '12h-15h', min: 720, max: 900, baseEFC: 94, baseEFD: 83, baseC: 62, baseD: 46 },
+        { label: '15h-18h', min: 900, max: 1080, baseEFC: 95, baseEFD: 86, baseC: 59, baseD: 43 },
+        { label: '18h-21h', min: 1080, max: 1260, baseEFC: 96, baseEFD: 87, baseC: 57, baseD: 41 },
+        { label: '21h-00h', min: 1260, max: 1440, baseEFC: 98, baseEFD: 90, baseC: 52, baseD: 35 }
+      ];
+
+      return hourIntervals.map(slot => {
+        const slotRows = filteredRows.filter(r => {
+          const startMin = timeToMinutes(r.inicio);
+          return startMin >= slot.min && startMin < slot.max;
+        });
+
+        const carregamentos = slotRows.filter(r => r.operacao === 'Carregamento');
+        const descarregamentos = slotRows.filter(r => r.operacao === 'Descarregamento');
+
+        const inWindowC = carregamentos.filter(r => r.status?.toUpperCase().includes('DENTRO')).length;
+        const inWindowD = descarregamentos.filter(r => r.status?.toUpperCase().includes('DENTRO')).length;
+
+        const efc = carregamentos.length > 0 ? parseFloat(((inWindowC / carregamentos.length) * 100).toFixed(1)) : slot.baseEFC;
+        const efd = descarregamentos.length > 0 ? parseFloat(((inWindowD / descarregamentos.length) * 100).toFixed(1)) : slot.baseEFD;
+
+        let sumC = 0, countC = 0;
+        carregamentos.forEach(r => {
+          if (r.inicio && r.fim) {
+            const diff = timeToMinutes(r.fim) - timeToMinutes(r.inicio);
+            if (diff > 0) { sumC += diff; countC++; }
+          }
+        });
+        const avgC = countC > 0 ? Math.round(sumC / countC) : slot.baseC;
+
+        let sumD = 0, countD = 0;
+        descarregamentos.forEach(r => {
+          if (r.inicio && r.fim) {
+            const diff = timeToMinutes(r.fim) - timeToMinutes(r.inicio);
+            if (diff > 0) { sumD += diff; countD++; }
+          }
+        });
+        const avgD = countD > 0 ? Math.round(sumD / countD) : slot.baseD;
+
+        return {
+          month: slot.label, // use "month" key to map to XAxis dataKey
+          EFC: efc,
+          EFD: efd,
+          tempoCarregamento: avgC,
+          tempoDescarga: avgD
+        };
+      });
+    }
+
+    // Case 2: Active filters - range of multiple days (Daily breakdown)
+    if (startDate || endDate) {
+      const dailyGroups: Record<string, ArmazemRow[]> = {};
+      filteredRows.forEach(r => {
+        const dKey = r.data || 'Sem Data';
+        if (!dailyGroups[dKey]) dailyGroups[dKey] = [];
+        dailyGroups[dKey].push(r);
+      });
+
+      const sortedDates = Object.keys(dailyGroups).sort((a, b) => {
+        const parseDate = (dStr: string) => {
+          const p = dStr.split('/');
+          if (p.length === 3) return new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0])).getTime();
+          return 0;
+        };
+        return parseDate(a) - parseDate(b);
+      });
+
+      // Take last 14 days for visual space if there are too many
+      const datesToUse = sortedDates.slice(-14);
+
+      if (datesToUse.length > 0) {
+        return datesToUse.map(dateStr => {
+          const rows = dailyGroups[dateStr];
+          const carregamentos = rows.filter(r => r.operacao === 'Carregamento');
+          const descarregamentos = rows.filter(r => r.operacao === 'Descarregamento');
+
+          const inWindowC = carregamentos.filter(r => r.status?.toUpperCase().includes('DENTRO')).length;
+          const inWindowD = descarregamentos.filter(r => r.status?.toUpperCase().includes('DENTRO')).length;
+
+          const efc = carregamentos.length > 0 ? parseFloat(((inWindowC / carregamentos.length) * 100).toFixed(1)) : 96.0;
+          const efd = descarregamentos.length > 0 ? parseFloat(((inWindowD / descarregamentos.length) * 100).toFixed(1)) : 85.0;
+
+          let sumC = 0, countC = 0;
+          carregamentos.forEach(r => {
+            if (r.inicio && r.fim) {
+              const diff = timeToMinutes(r.fim) - timeToMinutes(r.inicio);
+              if (diff > 0) { sumC += diff; countC++; }
+            }
+          });
+          const avgC = countC > 0 ? Math.round(sumC / countC) : 58;
+
+          let sumD = 0, countD = 0;
+          descarregamentos.forEach(r => {
+            if (r.inicio && r.fim) {
+              const diff = timeToMinutes(r.fim) - timeToMinutes(r.inicio);
+              if (diff > 0) { sumD += diff; countD++; }
+            }
+          });
+          const avgD = countD > 0 ? Math.round(sumD / countD) : 42;
+
+          const dateParts = dateStr.split('/');
+          const formattedLabel = dateParts.length === 3 ? `${dateParts[0]}/${dateParts[1]}` : dateStr;
+
+          return {
+            month: formattedLabel, // mapped to XAxis "month"
+            EFC: efc,
+            EFD: efd,
+            tempoCarregamento: avgC,
+            tempoDescarga: avgD
+          };
+        });
+      }
+    }
+
+    // Case 3: No date filters (Default historical 4-month trend)
     const monthGroups: Record<string, ArmazemRow[]> = {};
-    armazemRows.forEach(r => {
+    filteredRows.forEach(r => {
       const dt = parseRowDate(r);
       if (dt) {
         const monthKey = `${dt.year}-${dt.month}`; // e.g. "2026-05"
@@ -701,7 +832,8 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
       const [year, month] = key.split('-');
 
       if (rows.length === 0) {
-        const base = baselines[key] || { EFC: 88.0, EFD: 13.0, tempoCarregamento: 69, tempoDescarga: 73 };
+        const isFiltered = statusMeta !== 'Todos' || operacaoFilter !== 'Todos' || turnoFilter !== 'Todos' || empilhadorFilter !== 'Todos' || tipoVeiculoFilter !== 'Todos';
+        const base = isFiltered ? { EFC: 0, EFD: 0, tempoCarregamento: 0, tempoDescarga: 0 } : (baselines[key] || { EFC: 88.0, EFD: 13.0, tempoCarregamento: 69, tempoDescarga: 73 });
         return {
           month: `${getMonthName(month)}/${year.substring(2)}`,
           EFC: base.EFC,
@@ -746,7 +878,7 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
         tempoDescarga: avgD > 0 ? avgD : 68
       };
     });
-  }, [armazemRows]);
+  }, [armazemRows, startDate, endDate, filteredRows]);
 
   // Calculate dynamic minimums for the EFC and EFD Y-Axes to ensure optimal visual scaling and meta-line visibility
   const dynamicYMinEFC = useMemo(() => {
@@ -927,6 +1059,192 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
     });
   }, [filteredRows, controlChartMetric]);
 
+  // Heatmap data calculation based on dock congestion
+  const dockHeatmapData = useMemo(() => {
+    const days = [
+      { label: 'SEG', name: 'Segunda-feira', dayNum: 1 },
+      { label: 'TER', name: 'Terça-feira', dayNum: 2 },
+      { label: 'QUA', name: 'Quarta-feira', dayNum: 3 },
+      { label: 'QUI', name: 'Quinta-feira', dayNum: 4 },
+      { label: 'SEX', name: 'Sexta-feira', dayNum: 5 },
+      { label: 'SÁB', name: 'Sábado', dayNum: 6 },
+    ];
+
+    const slots = [
+      { label: '08:00 - 10:00', range: [8, 10] },
+      { label: '10:00 - 12:00', range: [10, 12] },
+      { label: '12:00 - 14:00', range: [12, 14] },
+      { label: '14:00 - 16:00', range: [14, 16] },
+      { label: '16:00 - 18:00', range: [16, 18] },
+      { label: '18:00 - 20:00', range: [18, 20] },
+    ];
+
+    // Initialize counts grid
+    const grid: Record<string, number> = {};
+    days.forEach(d => {
+      slots.forEach((s, idx) => {
+        grid[`${d.dayNum}-${idx}`] = 0;
+      });
+    });
+
+    // Fill counts using filteredRows
+    let hasRealFilteredData = false;
+    filteredRows.forEach(r => {
+      const weekday = getRowWeekday(r); // 1 = Mon, ..., 6 = Sat
+      if (weekday >= 1 && weekday <= 6) {
+        const hour = r.inicio ? parseInt(r.inicio.split(':')[0]) : -1;
+        if (hour !== -1) {
+          let slotIdx = -1;
+          slots.forEach((s, idx) => {
+            if (hour >= s.range[0] && hour < s.range[1]) {
+              slotIdx = idx;
+            }
+          });
+          if (slotIdx !== -1) {
+            grid[`${weekday}-${slotIdx}`]++;
+            hasRealFilteredData = true;
+          }
+        }
+      }
+    });
+
+    return days.map(d => {
+      const daySlots = slots.map((s, idx) => {
+        const key = `${d.dayNum}-${idx}`;
+        const count = grid[key] || 0;
+
+        // Default layout matching the user's uploaded photo
+        let color = 'green';
+        if (idx === 5) {
+          if (d.dayNum === 1 || d.dayNum === 5) {
+            color = 'orange';
+          } else if (d.dayNum === 2 || d.dayNum === 3 || d.dayNum === 4) {
+            color = 'red';
+          }
+        }
+
+        // If there's real filtered data, color based on congestion
+        if (hasRealFilteredData) {
+          if (count >= 4) {
+            color = 'red';
+          } else if (count >= 2) {
+            color = 'orange';
+          } else {
+            color = 'green';
+          }
+        }
+
+        return {
+          slotIdx: idx,
+          slotLabel: s.label,
+          count,
+          color,
+        };
+      });
+
+      return {
+        ...d,
+        slots: daySlots,
+      };
+    });
+  }, [filteredRows]);
+
+  // Dynamic Control Chart Calculation for Loading Times (CEP)
+  const controlChartCarregamentoData = useMemo(() => {
+    const dailyMinutes: Record<string, { totalMin: number; count: number }> = {};
+    const carregamentos = filteredRows.filter(r => r.operacao === 'Carregamento');
+    
+    carregamentos.forEach(r => {
+      const dt = parseRowDate(r);
+      if (!dt) return;
+      const dayLabel = `${dt.day}/${dt.month}`;
+      if (r.inicio && r.fim) {
+        const diff = timeToMinutes(r.fim) - timeToMinutes(r.inicio);
+        if (diff > 0 && diff < 300) {
+          if (!dailyMinutes[dayLabel]) {
+            dailyMinutes[dayLabel] = { totalMin: 0, count: 0 };
+          }
+          dailyMinutes[dayLabel].totalMin += diff;
+          dailyMinutes[dayLabel].count += 1;
+        }
+      }
+    });
+
+    const calculatedPoints = Object.keys(dailyMinutes)
+      .sort((a, b) => {
+        const [dayA, monthA] = a.split('/').map(Number);
+        const [dayB, monthB] = b.split('/').map(Number);
+        return monthA === monthB ? dayA - dayB : monthA - monthB;
+      })
+      .map(label => {
+        const avg = Math.round(dailyMinutes[label].totalMin / dailyMinutes[label].count);
+        return {
+          day: label,
+          avgLoadingTime: avg,
+        };
+      });
+
+    // Baseline mock data matching the user's specs perfectly (68 mean, 82 LSC, 54 LIC)
+    const defaultPoints = [
+      { day: '01', avgLoadingTime: 65 },
+      { day: '02', avgLoadingTime: 72 },
+      { day: '03', avgLoadingTime: 58 },
+      { day: '04', avgLoadingTime: 84 }, // out of bounds (> 82)
+      { day: '05', avgLoadingTime: 66 },
+      { day: '06', avgLoadingTime: 70 },
+      { day: '07', avgLoadingTime: 63 },
+      { day: '08', avgLoadingTime: 51 }, // out of bounds (< 54)
+      { day: '09', avgLoadingTime: 69 },
+      { day: '10', avgLoadingTime: 75 },
+      { day: '11', avgLoadingTime: 67 },
+      { day: '12', avgLoadingTime: 76 },
+    ];
+
+    const hasRealFilteredData = calculatedPoints.length >= 5;
+    const finalPoints = hasRealFilteredData ? calculatedPoints : defaultPoints;
+
+    let media = 68;
+    let lsc = 82;
+    let lic = 54;
+
+    if (hasRealFilteredData) {
+      const values = finalPoints.map(p => p.avgLoadingTime);
+      const n = values.length;
+      const sum = values.reduce((s, v) => s + v, 0);
+      media = Math.round(sum / n);
+
+      const variance = values.reduce((s, v) => s + Math.pow(v - media, 2), 0) / (n - 1 || 1);
+      const stdDev = Math.sqrt(variance);
+
+      lsc = Math.round(media + 2.0 * stdDev);
+      lic = Math.round(media - 2.0 * stdDev);
+      if (lic < 10) lic = 10;
+      if (lsc <= media) lsc = media + 15;
+    }
+
+    const pointsWithStatus = finalPoints.map(p => {
+      const isOutOfBounds = p.avgLoadingTime > lsc || p.avgLoadingTime < lic;
+      return {
+        ...p,
+        isOutOfBounds,
+        media,
+        lsc,
+        lic,
+      };
+    });
+
+    const hasOutOfBounds = pointsWithStatus.some(p => p.isOutOfBounds);
+    const status = hasOutOfBounds ? 'Fora de Controle' : 'Estável';
+
+    return {
+      points: pointsWithStatus,
+      media,
+      lsc,
+      lic,
+      status,
+    };
+  }, [filteredRows]);
+
   // Histograma Carregamento distribution
   const histogramaCarregamentoData = useMemo(() => {
     const ranges = {
@@ -960,46 +1278,6 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
 
   // Dynamic ranking of Operators (Empilhadores) - maps neatly to layout
   const rotasPerformanceData = useMemo(() => {
-    if (actualArmazemRows.length === 0) {
-      return [
-        {
-          rota: 'VICTOR RAMOS',
-          tempoMedio: 69,
-          quantidade: 30,
-          dentroMeta: 43,
-          totalPaletes: viewUnit === 'pal' ? 540 : Math.round(540 * 5.4 * 10) / 10
-        },
-        {
-          rota: 'ALEXANDRE SILVA',
-          tempoMedio: 67,
-          quantidade: 30,
-          dentroMeta: 50,
-          totalPaletes: viewUnit === 'pal' ? 520 : Math.round(520 * 5.4 * 10) / 10
-        },
-        {
-          rota: 'OZENILDO SILVA',
-          tempoMedio: 71,
-          quantidade: 30,
-          dentroMeta: 40,
-          totalPaletes: viewUnit === 'pal' ? 510 : Math.round(510 * 5.4 * 10) / 10
-        },
-        {
-          rota: 'MARCELO SOUZA',
-          tempoMedio: 69,
-          quantidade: 30,
-          dentroMeta: 47,
-          totalPaletes: viewUnit === 'pal' ? 490 : Math.round(490 * 5.4 * 10) / 10
-        },
-        {
-          rota: 'GABRIEL JOSÉ',
-          tempoMedio: 65,
-          quantidade: 28,
-          dentroMeta: 52,
-          totalPaletes: viewUnit === 'pal' ? 460 : Math.round(460 * 5.4 * 10) / 10
-        }
-      ];
-    }
-
     const empGroups: Record<string, { totalPaletes: number; totalViagens: number; dentroJanela: number; totalMin: number; validCount: number }> = {};
     filteredRows.forEach(r => {
       const nome = r.empilhador || 'Sem Operador';
@@ -2361,6 +2639,213 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
 
         </div>
 
+        {/* Row 2: Carta de Controle - CEP e Heatmap de Eficiência de Horários */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* CARTA DE CONTROLE – TEMPO DE CARREGAMENTO */}
+          <div className="bg-white p-6 rounded-xl border border-gray-200/80 shadow-xs flex flex-col justify-between gap-4">
+            <div className="flex flex-col gap-4">
+              <div>
+                <h3 className="font-sans font-black text-sm uppercase text-[#032b5e] tracking-wider">
+                  CARTA DE CONTROLE – TEMPO DE CARREGAMENTO
+                </h3>
+                <p className="text-[11px] text-gray-400 font-bold uppercase mt-0.5 tracking-wide">
+                  MONITORAMENTO DA ESTABILIDADE DO PROCESSO (CEP)
+                </p>
+              </div>
+
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart 
+                    data={controlChartCarregamentoData.points} 
+                    margin={{ top: 25, right: 30, left: 10, bottom: 5 }}
+                  >
+                    <CartesianGrid stroke="#f1f5f9" vertical={false} />
+                    <XAxis 
+                      dataKey="day" 
+                      stroke="#94a3b8" 
+                      fontSize={11} 
+                      fontWeight="bold" 
+                      tickLine={false} 
+                    />
+                    <YAxis 
+                      stroke="#94a3b8" 
+                      fontSize={11} 
+                      tickLine={false} 
+                      axisLine={false}
+                      domain={[0, 'dataMax + 15']}
+                      label={{ 
+                        value: 'Minutos', 
+                        angle: -90, 
+                        position: 'insideLeft', 
+                        style: { textAnchor: 'middle', fontSize: 11, fill: '#64748b', fontWeight: 'bold' },
+                        offset: -5 
+                      }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }} 
+                      cursor={{ fill: '#f8fafc' }}
+                    />
+                    
+                    {/* Linha de Process Mean (Média do Processo) - Verde */}
+                    <ReferenceLine 
+                      y={controlChartCarregamentoData.media} 
+                      stroke="#10b981" 
+                      strokeWidth={2} 
+                      label={{ 
+                        value: `Média: ${controlChartCarregamentoData.media} min`, 
+                        fill: '#10b981', 
+                        position: 'insideTopLeft', 
+                        fontSize: 10, 
+                        fontWeight: 'black',
+                        offset: 8 
+                      }} 
+                    />
+
+                    {/* Linha de LSC (Limite Superior de Controle) - Vermelho */}
+                    <ReferenceLine 
+                      y={controlChartCarregamentoData.lsc} 
+                      stroke="#ef4444" 
+                      strokeDasharray="4 4" 
+                      strokeWidth={1.5} 
+                      label={{ 
+                        value: `LSC: ${controlChartCarregamentoData.lsc} min`, 
+                        fill: '#ef4444', 
+                        position: 'insideTopRight', 
+                        fontSize: 10, 
+                        fontWeight: 'black',
+                        offset: 8 
+                      }} 
+                    />
+
+                    {/* Linha de LIC (Limite Inferior de Controle) - Vermelho */}
+                    <ReferenceLine 
+                      y={controlChartCarregamentoData.lic} 
+                      stroke="#ef4444" 
+                      strokeDasharray="4 4" 
+                      strokeWidth={1.5} 
+                      label={{ 
+                        value: `LIC: ${controlChartCarregamentoData.lic} min`, 
+                        fill: '#ef4444', 
+                        position: 'insideBottomRight', 
+                        fontSize: 10, 
+                        fontWeight: 'black',
+                        offset: 8 
+                      }} 
+                    />
+                    
+                    <Bar 
+                      dataKey="avgLoadingTime" 
+                      name="Tempo Médio de Carregamento" 
+                      barSize={32}
+                      radius={[4, 4, 0, 0]}
+                      isAnimationActive={false}
+                    >
+                      {controlChartCarregamentoData.points.map((entry, index) => {
+                        const fill = entry.isOutOfBounds ? '#ff1e56' : '#1e56f0';
+                        return <Cell key={`cell-${index}`} fill={fill} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Footer Info */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center border-t border-slate-100 pt-4 mt-2">
+              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100/60">
+                <span className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">MÉDIA</span>
+                <span className="block text-xs font-black text-slate-800 mt-0.5">{controlChartCarregamentoData.media} min</span>
+              </div>
+              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100/60">
+                <span className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">LSC</span>
+                <span className="block text-xs font-black text-rose-600 mt-0.5">{controlChartCarregamentoData.lsc} min</span>
+              </div>
+              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100/60">
+                <span className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">LIC</span>
+                <span className="block text-xs font-black text-rose-600 mt-0.5">{controlChartCarregamentoData.lic} min</span>
+              </div>
+              <div className={`p-2.5 rounded-lg border ${controlChartCarregamentoData.status === 'Estável' ? 'bg-emerald-50 border-emerald-100/60 text-emerald-700' : 'bg-rose-50 border-rose-100/60 text-rose-700'}`}>
+                <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest">PROCESSO</span>
+                <span className="block text-xs font-black mt-0.5 flex items-center justify-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${controlChartCarregamentoData.status === 'Estável' ? 'bg-emerald-500 animate-pulse' : 'bg-[#ff1e56]'}`} />
+                  {controlChartCarregamentoData.status}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* HEATMAP DE EFICIÊNCIA DE HORÁRIOS (DOCA CONGESTIONADA) */}
+          <div className="bg-white p-6 rounded-xl border border-gray-200/80 shadow-xs flex flex-col justify-between gap-4">
+            <div className="flex flex-col gap-4">
+              <div>
+                <h3 className="font-sans font-black text-sm uppercase text-slate-800 tracking-wider text-[#032b5e]">
+                  HEATMAP DE EFICIÊNCIA DE HORÁRIOS (DOCA CONGESTIONADA)
+                </h3>
+                <p className="text-[11px] text-gray-400 font-bold uppercase mt-0.5 tracking-wide">
+                  Nível de ocupação das docas por dia da semana e faixa horária
+                </p>
+              </div>
+
+              <div className="flex-1 flex flex-col justify-center bg-slate-50/50 rounded-xl p-4 border border-slate-100 min-h-[256px]">
+                <div className="grid grid-cols-6 gap-2 text-center">
+                  {dockHeatmapData.map((day) => (
+                    <div key={day.label} className="flex flex-col items-center gap-2">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                        {day.label}
+                      </span>
+                      <div className="flex flex-col gap-1.5 w-full max-w-[32px]">
+                        {day.slots.map((slot) => {
+                          let bgClass = 'bg-[#00c58d]';
+                          let statusText = 'Eficiente (Doca Livre)';
+                          if (slot.color === 'orange') {
+                            bgClass = 'bg-[#fca103]';
+                            statusText = 'Atenção (Doca Parcial)';
+                          } else if (slot.color === 'red') {
+                            bgClass = 'bg-[#ff1e56]';
+                            statusText = 'Congestionado (Crítico)';
+                          }
+
+                          return (
+                            <div
+                              key={slot.slotIdx}
+                              className={`h-8 w-full rounded-md ${bgClass} transition-all duration-300 hover:scale-105 cursor-pointer relative group`}
+                            >
+                              {/* Custom Tooltip */}
+                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:flex flex-col bg-slate-900 text-white text-[10px] font-bold rounded p-2 shadow-lg z-50 w-36 pointer-events-none whitespace-normal text-center leading-normal">
+                                <span className="text-sky-300 uppercase">{day.name}</span>
+                                <span className="text-gray-300">{slot.slotLabel}</span>
+                                <span className="mt-1 font-extrabold text-white">{statusText}</span>
+                                <span className="text-gray-400 font-normal">{slot.count} mov. registrados</span>
+                                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45"></div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="flex justify-center gap-4 text-[9px] font-black uppercase tracking-wider text-slate-500 border-t border-slate-100 pt-3">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-sm bg-[#00c58d]" />
+                <span>Livre</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-sm bg-[#fca103]" />
+                <span>Médio</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-sm bg-[#ff1e56]" />
+                <span>Crítico</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {/* SEÇÃO 2: ANÁLISE DE PERNOITE DOS CAMINHÕES */}
@@ -2421,7 +2906,6 @@ export default function LogisticaDashboard({ user, empresa, onBack }: LogisticaD
                   name="Quantidade" 
                   radius={[4, 4, 0, 0]} 
                   barSize={45}
-                  label={{ position: 'top', fill: '#475569', fontSize: 11, fontWeight: 'bold' }}
                   isAnimationActive={false}
                 >
                   {pernoiteData.histogramData.map((entry, index) => (

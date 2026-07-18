@@ -119,7 +119,7 @@ export interface ValidadeRow {
   lastro: number;
   caixa: number;
   validade: string;
-  localizacao: 'picking' | 'central';
+  localizacao: 'picking' | 'central' | 'marketplace';
   cadastradoEm?: string;
   _criadoEm?: string;
 }

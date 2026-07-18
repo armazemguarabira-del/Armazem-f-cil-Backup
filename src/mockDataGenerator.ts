@@ -263,35 +263,47 @@ export function generateMockQuebras(empresaId: string): QuebraRow[] {
 export function generateMockValidades(empresaId: string): ValidadeRow[] {
   const rows: ValidadeRow[] = [];
   const produtos = [
-    { cod: '1010', desc: 'SKOL 600ML PET' },
-    { cod: '2020', desc: 'BRAHMA DUPLO MALTE LATA 350ML' },
-    { cod: '3030', desc: 'STELLA ARTOIS LONG NECK 275ML' },
-    { cod: '4040', desc: 'CORONA EXTRA 330ML LN' },
-    { cod: '5050', desc: 'SPATEN LATA 350ML' }
+    { cod: '982', desc: 'SKOL 600ML' },
+    { cod: '988', desc: 'BRAHMA CHOPP 600ML' },
+    { cod: '1699', desc: 'STELLA ARTOIS LT 269ML' },
+    { cod: '20329', desc: 'BRAHMA DUPLO MALTE 600ML' },
+    { cod: '21632', desc: 'SPATEN N LN 355ML SIXPACK' },
+    { cod: '23186', desc: 'SPATEN N 600ML' },
+    { cod: '9068', desc: 'SKOL LATA 350ML' },
+    { cod: '9069', desc: 'BRAHMA CHOPP LATA 350ML' },
+    { cod: '2548', desc: 'BUDWEISER 600ML' },
+    { cod: '2546', desc: 'ORIGINAL 600ML' }
   ];
   
-  // Set expiration dates ranging from -10 days to +90 days from today
   const today = new Date();
   
   produtos.forEach((prod, idx) => {
-    // Generate 3 batches with different expirations for each product
-    const offsets = [-5, 15, 45, 80]; // Past, critical, warning, safe
+    // We generate a series of offsets for each product.
+    // The first offset (critical) is customized: 3, 6, 9, 12, 15, 18, 21, 24, 27, 30 days.
+    // This guarantees EXACTLY 10 distinct products close to expiring!
+    const criticalOffset = 3 + idx * 3;
+    const offsets = [criticalOffset, 45 + idx, 75 + idx * 2, 110 + idx * 3];
+    
+    // Add 1-2 expired batches to make it realistic
+    if (idx === 0) offsets.unshift(-5);
+    if (idx === 1) offsets.unshift(-2);
+
     offsets.forEach((offset, oIdx) => {
       const valDate = new Date(today.getTime());
       valDate.setDate(today.getDate() + offset);
       const valISO = `${valDate.getFullYear()}-${pad(valDate.getMonth() + 1)}-${pad(valDate.getDate())}`;
       
       rows.push({
-        _docId: `mock-validade-${idx}-${oIdx}`,
+        _docId: `mock-validade-${idx}-${offset}`,
         empresaId,
-        id: idx * 10 + oIdx,
+        id: idx * 10 + offset + 100,
         codigo: prod.cod,
         descricao: prod.desc,
-        palhete: 2 + (idx % 3),
+        palhete: 3 + (idx % 3),
         lastro: 4,
         caixa: 15 + (idx * 5),
         validade: valISO,
-        localizacao: oIdx % 2 === 0 ? 'picking' : 'central',
+        localizacao: oIdx % 3 === 0 ? 'picking' : oIdx % 3 === 1 ? 'central' : 'marketplace',
         cadastradoEm: today.toLocaleDateString('pt-BR'),
         _criadoEm: today.toISOString()
       });

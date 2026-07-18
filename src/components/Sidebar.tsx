@@ -343,7 +343,7 @@ export default function Sidebar({
         {/* Brand Logo Header at top-left of sidebar */}
         {!collapsed && (
           <div className="p-4 flex items-center justify-center border-b border-slate-200 dark:border-[#1c2530]/40 flex-shrink-0">
-            <BrandLogo variant="header" />
+            <BrandLogo variant="header" theme={theme} />
           </div>
         )}
 

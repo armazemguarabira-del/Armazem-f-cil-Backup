@@ -14,7 +14,11 @@ import {
   Pie,
   Legend,
   AreaChart,
-  Area
+  Area,
+  ScatterChart,
+  Scatter,
+  ZAxis,
+  ReferenceLine
 } from 'recharts';
 import { 
   Calendar, 
@@ -500,6 +504,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
         // dynamic check of locations/picking
         if (streetFilter === 'PICKING' && v.localizacao !== 'picking') return false;
         if (streetFilter === 'CENTRAL' && v.localizacao !== 'central') return false;
+        if (streetFilter === 'MARKETPLACE' && v.localizacao !== 'marketplace') return false;
       }
       // Bracket
       if (expiryBracketFilter !== 'TODAS' && v.bracket !== expiryBracketFilter) return false;
@@ -514,7 +519,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
     });
   };
 
-  const filteredValidadesList = getFilteredProductsList();
+  const filteredValidadesList = getFilteredProductsList().sort((a, b) => a.days - b.days);
 
   // 5. Chart Data preparations
   // Bracket distribution chart
@@ -525,10 +530,10 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
 
   const bracketChartData = [
     { name: 'Crítico (0-30 dias)', value: bracketCount['0-30'], color: '#ef4444' },
-    { name: 'Alerta (31-60 dias)', value: bracketCount['31-60'], color: '#f5a623' },
+    { name: 'Alerta (31-60 dias)', value: bracketCount['31-60'], color: '#3b82f6' },
     { name: 'Atenção (61-90 dias)', value: bracketCount['61-90'], color: '#eab308' },
     { name: 'Seguro (+90 dias)', value: bracketCount['90+'], color: '#10b981' }
-  ].filter(b => b.value > 0);
+  ];
 
   // Overdue actions by category
   const actionsStatusCount = { 'Pendente': 0, 'Em Andamento': 0, 'Concluído': 0, 'Atrasado': 0 };
@@ -641,21 +646,26 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
         </div>
 
         {/* Unit Selector Toggle */}
-        <div className="flex items-center bg-gray-100 p-0.5 rounded-xl border border-gray-200/60 h-[38px] shrink-0">
-          <button
-            type="button"
-            onClick={() => setViewUnit('u')}
-            className={`px-4 py-1.5 rounded-lg font-sans font-bold text-[10px] uppercase tracking-wider transition-all border-none cursor-pointer h-full ${viewUnit === 'u' ? 'bg-[#032b5e] text-white shadow-sm' : 'text-gray-500 hover:text-[#032b5e] bg-transparent'}`}
-          >
-            UNIDADE (U)
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewUnit('he')}
-            className={`px-4 py-1.5 rounded-lg font-sans font-bold text-[10px] uppercase tracking-wider transition-all border-none cursor-pointer h-full ${viewUnit === 'he' ? 'bg-[#032b5e] text-white shadow-sm' : 'text-gray-500 hover:text-[#032b5e] bg-transparent'}`}
-          >
-            HECTOLITRO (HE)
-          </button>
+        <div className="flex flex-col shrink-0">
+          <span className="text-[10px] font-extrabold text-slate-500 tracking-wider uppercase mb-1">
+            VISUALIZAÇÃO
+          </span>
+          <div className="flex items-center bg-gray-100 p-0.5 rounded-xl border border-gray-200/60 h-[38px] w-[110px] shrink-0">
+            <button
+              type="button"
+              onClick={() => setViewUnit('u')}
+              className={`flex-1 rounded-lg font-sans font-black text-xs transition-all border-none cursor-pointer h-full flex items-center justify-center ${viewUnit === 'u' ? 'bg-[#032b5e] text-white shadow-sm' : 'text-slate-400 hover:text-[#032b5e] bg-transparent'}`}
+            >
+              CX
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewUnit('he')}
+              className={`flex-1 rounded-lg font-sans font-black text-xs transition-all border-none cursor-pointer h-full flex items-center justify-center ${viewUnit === 'he' ? 'bg-[#032b5e] text-white shadow-sm' : 'text-slate-400 hover:text-[#032b5e] bg-transparent'}`}
+            >
+              HE
+            </button>
+          </div>
         </div>
       </div>
 
@@ -666,7 +676,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
             <span className="text-[8.5px] uppercase font-black tracking-widest text-gray-400 block">PRODUTOS PRÓXIMOS AO VENCIMENTO</span>
             <div className="flex items-baseline mt-2">
               <span className="text-3xl font-extrabold text-[#ef4444]">{totalRiscoUnities}</span>
-              <span className="text-[10px] font-bold text-gray-500 ml-1">{viewUnit === 'u' ? 'u' : 'HE'} (≤90 dias)</span>
+              <span className="text-[10px] font-bold text-gray-500 ml-1">{viewUnit === 'u' ? 'CX' : 'HE'} (≤90 dias)</span>
             </div>
           </div>
           <div className="border-t border-gray-100 pt-2 mt-2 text-[9px] text-gray-400 font-bold uppercase flex justify-between">
@@ -731,30 +741,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
         </div>
       </div>
 
-      {/* AUTOMATIC SYSTEM ALERTS / INSIGHT BAR */}
-      <div className="bg-[#fffbeb] border border-amber-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm">
-        <div className="flex items-start gap-2.5">
-          <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-          <div>
-            <span className="text-xs font-black text-[#7c2d12] uppercase tracking-wider block">ALERTAS FEFO OPERACIONAIS AUTOMÁTICOS</span>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-[10px] text-amber-800 font-semibold">
-              {totalVencidosUnidades > 0 && <span className="flex items-center gap-1 text-red-600">🛑 {totalVencidosUnidades} {viewUnit === 'u' ? 'UNIDADES' : 'HE'} VENCIDAS NO ESTOQUE!</span>}
-              {totalDesviosFEFO > 0 && <span className="flex items-center gap-1">⚠️ {totalDesviosFEFO} produtos fora da estratégia FEFO no Picking.</span>}
-              {actionPoints.filter(a => a.status === 'Atrasado').length > 0 && <span className="flex items-center gap-1 text-red-600">🚨 {actionPoints.filter(a => a.status === 'Atrasado').length} Ações RLP vencidas/atrasadas.</span>}
-              <span>📌 Rua A apresenta excesso de remanejamentos internos (+6 movimentações).</span>
-            </div>
-          </div>
-        </div>
-        <button 
-          onClick={() => {
-            const saved = localStorage.getItem(`validades_${companyId}`);
-            if (saved) setActualValidades(JSON.parse(saved));
-          }}
-          className="flex items-center gap-1 text-[9px] font-black text-[#032b5e] uppercase border border-[#032b5e]/25 hover:bg-white bg-transparent px-2 py-1 rounded-lg transition-colors cursor-pointer"
-        >
-          <RefreshCw className="w-3 h-3" /> Atualizar
-        </button>
-      </div>
+
 
       {/* TAB PAGE RENDERINGS */}
 
@@ -895,7 +882,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
                     <YAxis stroke="#94a3b8" fontSize={9} />
                     <Tooltip contentStyle={{ fontSize: 9 }} />
                     <Legend wrapperStyle={{ fontSize: 9 }} />
-                    <Line type="monotone" dataKey="risco" name="Volume Crítico (unidades)" stroke="#ef4444" strokeWidth={2} />
+                    <Line type="monotone" dataKey="risco" name={`Volume Crítico (${viewUnit === 'u' ? 'CX' : 'HE'})`} stroke="#ef4444" strokeWidth={2} />
                     <Line type="monotone" dataKey="aderencia" name="Aderência FEFO (%)" stroke="#10b981" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -911,7 +898,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
           ───────────────────────────────────────────────────────────────── */}
       {activeTab === 'fefo' && (
         <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             
             {/* Left Column: Ranking of Highest Risk Products */}
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
@@ -927,7 +914,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
                       <th className="p-2.5 text-gray-500 text-left uppercase tracking-wider text-[9px]">Código</th>
                       <th className="p-2.5 text-gray-500 text-left uppercase tracking-wider text-[9px]">Produto</th>
                       <th className="p-2.5 text-gray-500 text-center uppercase tracking-wider text-[9px]">Prazo</th>
-                      <th className="p-2.5 text-gray-500 text-right uppercase tracking-wider text-[9px]">Unidades</th>
+                      <th className="p-2.5 text-gray-500 text-right uppercase tracking-wider text-[9px]">{viewUnit === 'u' ? 'Caixas (CX)' : 'Hectolitros (HE)'}</th>
                       <th className="p-2.5 text-gray-500 text-center uppercase tracking-wider text-[9px]">Status</th>
                     </tr>
                   </thead>
@@ -947,7 +934,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
                           return (
                             <tr key={idx} className="hover:bg-slate-50/40">
                               <td className="p-2.5 font-mono font-bold text-slate-700">{v.codigo}</td>
-                              <td className="p-2.5 font-semibold text-slate-800 uppercase">{v.descricao}</td>
+                               <td className="p-2.5 font-semibold text-slate-800 uppercase">{v.descricao}</td>
                               <td className="p-2.5 text-center font-bold">
                                 <span className={v.days < 0 ? 'text-red-600' : v.days <= 30 ? 'text-red-500' : 'text-slate-600'}>
                                   {v.days < 0 ? `Vencido há ${Math.abs(v.days)} dias` : `${v.days} dias`}
@@ -968,60 +955,6 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
               </div>
             </div>
 
-            {/* Right Column: Out of FEFO oldest batch alert */}
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
-              <div>
-                <h3 className="font-sans font-black text-xs uppercase text-[#032b5e] tracking-wider mb-2">
-                  DESVIOS DE LOTE MAIS ANTIGO (NÃO-EXPEDIDOS)
-                </h3>
-                <p className="text-[10px] text-gray-400 font-bold mb-4">Lotes que deveriam ter prioridade absoluta de expedição pela regra FEFO</p>
-                
-                <div className="space-y-3.5">
-                  <div className="bg-red-50 border-l-4 border-red-500 p-3.5 rounded-r-lg flex items-start gap-3">
-                    <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="text-[11px] font-black text-red-800 block">SKOL 600ML (Lote: SK-2026A)</span>
-                      <p className="text-[10px] text-red-700 mt-1 leading-normal">
-                        Lote antigo parado no endereço <strong>Rua A - End: 12</strong> com vencimento em <strong>12/07/2026</strong>. Lote mais novo SK-2026B está sendo enviado no picking no lugar deste.
-                      </p>
-                      <span className="inline-block bg-red-100 text-red-800 text-[8px] font-black uppercase px-1.5 py-0.5 rounded mt-2">Diferença de Vencimento: 24 dias</span>
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-50 border-l-4 border-amber-500 p-3.5 rounded-r-lg flex items-start gap-3">
-                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="text-[11px] font-black text-amber-800 block">GUARANA CHP ANTARCTICA PET 2L (Lote: GU-8821)</span>
-                      <p className="text-[10px] text-amber-700 mt-1 leading-normal">
-                        Lote parado na <strong>Rua B - Central</strong>. Lote mais novo sendo expedido na rota de vendas. Bloquear expedição e priorizar escoamento FEFO.
-                      </p>
-                      <span className="inline-block bg-amber-100 text-amber-800 text-[8px] font-black uppercase px-1.5 py-0.5 rounded mt-2">Ação Sugerida: FIFO Switch imediato</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Incidence addresses */}
-              <div className="mt-5 pt-4 border-t border-gray-100">
-                <span className="text-[9px] uppercase font-black text-gray-400 block mb-2">ENDEREÇOS (RUAS) COM MAIOR INCIDÊNCIA DE DESVIOS FEFO</span>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-slate-50 p-2.5 rounded-lg border border-gray-100 text-center">
-                    <span className="text-[11px] font-black text-red-600 block">Rua A</span>
-                    <span className="text-[9px] text-gray-500 font-bold uppercase mt-1 block">4 Desvios</span>
-                  </div>
-                  <div className="bg-slate-50 p-2.5 rounded-lg border border-gray-100 text-center">
-                    <span className="text-[11px] font-black text-amber-500 block">Rua C</span>
-                    <span className="text-[9px] text-gray-500 font-bold uppercase mt-1 block">2 Desvios</span>
-                  </div>
-                  <div className="bg-slate-50 p-2.5 rounded-lg border border-gray-100 text-center">
-                    <span className="text-[11px] font-black text-gray-500 block">Rua B</span>
-                    <span className="text-[9px] text-gray-500 font-bold uppercase mt-1 block">1 Desvio</span>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
           </div>
         </div>
       )}
@@ -1031,85 +964,287 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
           TAB 3: ESTOQUE X PICKING
           ───────────────────────────────────────────────────────────────── */}
       {activeTab === 'estoque-picking' && (
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-100 pb-4 mb-4">
-            <div>
-              <h3 className="font-sans font-black text-xs uppercase text-[#032b5e] tracking-wider">
-                CONCILIAÇÃO FÍSICA E AJUSTES: ESTOQUE x PICKING
-              </h3>
-              <p className="text-[10px] text-gray-400 font-bold mt-0.5">Visão detalhada de diferenças volumétricas entre o depósito central e as ruas de picking</p>
-            </div>
+        <div className="flex flex-col gap-6">
+          {/* Top Row: Analytical Visualizations */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-[9.5px] font-bold text-gray-500 uppercase">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Conforme
-              </span>
-              <span className="flex items-center gap-1 text-[9.5px] font-bold text-gray-500 uppercase">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Atenção
-              </span>
-              <span className="flex items-center gap-1 text-[9.5px] font-bold text-gray-500 uppercase">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Desvio Crítico
-              </span>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse font-sans text-xs min-w-[700px]">
-              <thead>
-                <tr className="bg-slate-50 border-b border-gray-200">
-                  <th className="p-3 text-gray-500 text-left uppercase tracking-wider text-[9px]">Produto</th>
-                  <th className="p-3 text-gray-500 text-left uppercase tracking-wider text-[9px]">Lote</th>
-                  <th className="p-3 text-gray-500 text-center uppercase tracking-wider text-[9px]">Validade</th>
-                  <th className="p-3 text-gray-500 text-right uppercase tracking-wider text-[9px]">Quantidade no Estoque</th>
-                  <th className="p-3 text-gray-500 text-right uppercase tracking-wider text-[9px]">Quantidade no Picking</th>
-                  <th className="p-3 text-gray-500 text-right uppercase tracking-wider text-[9px]">Diferença Física</th>
-                  <th className="p-3 text-gray-500 text-center uppercase tracking-wider text-[9px]">Status de Alinhamento</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {pickingComp.map((p, idx) => {
-                  const badgeColor = p.status === 'Conforme' ? 'bg-emerald-100 text-emerald-800' :
-                                     p.status === 'Atenção' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800';
-                  
-                  return (
-                    <tr key={idx} className="hover:bg-slate-50/55">
-                      <td className="p-3 font-semibold text-slate-800 uppercase">{p.produto}</td>
-                      <td className="p-3 font-mono font-bold text-gray-600">{p.lote}</td>
-                      <td className="p-3 text-center text-slate-700 font-medium">{p.validade}</td>
-                      <td className="p-3 text-right font-semibold text-slate-700">{p.qtdEstoque} cx</td>
-                      <td className="p-3 text-right font-semibold text-slate-700">{p.qtdPicking} cx</td>
-                      <td className="p-3 text-right font-black text-slate-900">{p.diferenca} cx</td>
-                      <td className="p-3 text-center">
-                        <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${badgeColor}`}>
-                          {p.status}
-                        </span>
-                      </td>
+            {/* 1. Heat Map de Ruptura de Picking */}
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-4">
+              <div>
+                <span className="text-[9px] bg-red-50 text-red-600 border border-red-200 px-2 py-0.5 rounded font-black tracking-wider uppercase">Indicador de Ruptura</span>
+                <h3 className="font-sans font-black text-xs uppercase text-[#032b5e] tracking-wider mt-2">
+                  1. Heat Map de Ruptura de Picking (Estoque × Endereço)
+                </h3>
+                <p className="text-[10px] text-gray-400 font-bold mt-0.5">
+                  Produtos com maior incidência de falta no picking mesmo existindo estoque central
+                </p>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse font-sans text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-gray-200">
+                      <th className="p-2.5 text-gray-500 text-left uppercase tracking-wider text-[9px]">Produto</th>
+                      <th className="p-2.5 text-gray-500 text-center uppercase tracking-wider text-[9px]">Picking OK</th>
+                      <th className="p-2.5 text-gray-500 text-center uppercase tracking-wider text-[9px]">Status</th>
+                      <th className="p-2.5 text-gray-500 text-left uppercase tracking-wider text-[9px]">Corredor</th>
+                      <th className="p-2.5 text-gray-500 text-left uppercase tracking-wider text-[9px]">Pico de Falta</th>
+                      <th className="p-2.5 text-gray-500 text-center uppercase tracking-wider text-[9px]">Prioridade</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {[
+                      { produto: 'Skol 269', ok: 98, corridor: 'Corredor A (Rua 1)', peak: '14:00 - 16:00', priority: 'Baixa', color: 'bg-emerald-500' },
+                      { produto: 'Brahma 600', ok: 91, corridor: 'Corredor B (Rua 3)', peak: '10:00 - 12:00', priority: 'Média', color: 'bg-amber-500' },
+                      { produto: 'Guaraná 2L', ok: 76, corridor: 'Corredor D (Rua 12)', peak: '08:00 - 10:00', priority: 'Urgente', color: 'bg-red-500' },
+                      { produto: 'Pepsi 2L', ok: 83, corridor: 'Corredor C (Rua 8)', peak: '16:00 - 18:00', priority: 'Alta', color: 'bg-orange-500' }
+                    ].map((item, i) => (
+                      <tr key={i} className="hover:bg-slate-50/40">
+                        <td className="p-2.5 font-bold text-slate-800 uppercase">{item.produto}</td>
+                        <td className="p-2.5 text-center font-black text-slate-700">{item.ok}%</td>
+                        <td className="p-2.5 text-center">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-100">
+                            <span className={`w-2 h-2 rounded-full ${item.color}`} />
+                            {item.ok >= 95 ? 'Conforme 🟢' : item.ok >= 90 ? 'Atenção 🟡' : item.ok >= 80 ? 'Alerta 🟠' : 'Crítico 🔴'}
+                          </span>
+                        </td>
+                        <td className="p-2.5 font-medium text-slate-600">{item.corridor}</td>
+                        <td className="p-2.5 text-slate-500 font-mono text-[10px]">{item.peak}</td>
+                        <td className="p-2.5 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                            item.priority === 'Urgente' ? 'bg-red-100 text-red-800' :
+                            item.priority === 'Alta' ? 'bg-orange-100 text-orange-800' :
+                            item.priority === 'Média' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {item.priority}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-slate-100 text-[9px] text-slate-500 font-bold uppercase">
+                <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                  <span className="text-slate-400 text-[8px] block mb-0.5">Corredor mais problemático</span>
+                  <span className="text-red-600 font-black text-xs">Corredor D (Rua 12)</span>
+                </div>
+                <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                  <span className="text-slate-400 text-[8px] block mb-0.5">Horário de maior ocorrência</span>
+                  <span className="text-[#032b5e] font-black text-xs">08:00 - 10:00</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Dispersão Estoque x Picking (Scatter Plot) */}
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-4">
+              <div>
+                <span className="text-[9px] bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded font-black tracking-wider uppercase">Análise de Balanço</span>
+                <h3 className="font-sans font-black text-xs uppercase text-[#032b5e] tracking-wider mt-2">
+                  2. Dispersão Estoque x Picking (Scatter Plot)
+                </h3>
+                <p className="text-[10px] text-gray-400 font-bold mt-0.5">
+                  Relação de volume total no centro de distribuição vs. disponível no picking (Eixos X e Y por SKU)
+                </p>
+              </div>
+
+              <div className="h-56 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart margin={{ top: 15, right: 15, bottom: 5, left: -25 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis type="number" dataKey="x" name="Estoque Total" unit=" cx" stroke="#94a3b8" fontSize={9} />
+                    <YAxis type="number" dataKey="y" name="Estoque no Picking" unit=" cx" stroke="#94a3b8" fontSize={9} />
+                    <ZAxis range={[60, 200]} />
+                    <Tooltip 
+                      cursor={{ strokeDasharray: '3 3' }} 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-white p-2.5 border border-slate-200 rounded-lg shadow-md text-xs font-sans">
+                              <p className="font-black text-[#032b5e] uppercase mb-1">{data.name}</p>
+                              <p className="text-slate-500 font-bold text-[10px]">Estoque Total: <span className="text-slate-800 font-mono">{data.x} cx</span></p>
+                              <p className="text-slate-500 font-bold text-[10px]">No Picking: <span className="text-slate-800 font-mono">{data.y} cx</span></p>
+                              <p className="mt-1.5 text-[8.5px] font-black uppercase text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded inline-block">
+                                {data.quadrant}
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <ReferenceLine x={400} stroke="#cbd5e1" strokeWidth={1} strokeDasharray="3 3" />
+                    <ReferenceLine y={150} stroke="#cbd5e1" strokeWidth={1} strokeDasharray="3 3" />
+                    <Scatter 
+                      name="SKUs" 
+                      data={[
+                        { x: 800, y: 350, name: 'SKOL 600ML', quadrant: 'Situação Ideal' },
+                        { x: 650, y: 280, name: 'BRAHMA CHOPP 600ML', quadrant: 'Situação Ideal' },
+                        { x: 500, y: 20, name: 'STELLA ARTOIS LT 269ML', quadrant: 'Problema Abastecimento Interno' },
+                        { x: 900, y: 50, name: 'GUARANA CHP ANTARCTICA 2L', quadrant: 'Problema Abastecimento Interno' },
+                        { x: 120, y: 290, name: 'ORIGINAL 600ML', quadrant: 'Risco de Ruptura' },
+                        { x: 220, y: 190, name: 'BUDWEISER 600ML', quadrant: 'Risco de Ruptura' },
+                        { x: 80, y: 15, name: 'PEPSI COLA PET 2L', quadrant: 'Necessidade Urgente' },
+                        { x: 50, y: 10, name: 'SKOL LATA 350ML', quadrant: 'Necessidade Urgente' }
+                      ]} 
+                      fill="#3b82f6"
+                    >
+                      {[
+                        { quadrant: 'Situação Ideal', color: '#10b981' },
+                        { quadrant: 'Situação Ideal', color: '#10b981' },
+                        { quadrant: 'Problema Abastecimento Interno', color: '#ef4444' },
+                        { quadrant: 'Problema Abastecimento Interno', color: '#ef4444' },
+                        { quadrant: 'Risco de Ruptura', color: '#eab308' },
+                        { quadrant: 'Risco de Ruptura', color: '#eab308' },
+                        { quadrant: 'Necessidade Urgente', color: '#f97316' },
+                        { quadrant: 'Necessidade Urgente', color: '#f97316' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Scatter>
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Quadrant mini legend */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 text-[8px] font-black uppercase text-slate-500">
+                <div className="bg-emerald-50 border border-emerald-100 p-1.5 rounded text-emerald-800">
+                  <span className="block text-[7px] text-emerald-600">Sup. Direito</span>
+                  Situação Ideal
+                </div>
+                <div className="bg-red-50 border border-red-100 p-1.5 rounded text-red-800">
+                  <span className="block text-[7px] text-red-600">Inf. Direito</span>
+                  Estoque Alto / Picking Vazio
+                </div>
+                <div className="bg-amber-50 border border-amber-100 p-1.5 rounded text-amber-800">
+                  <span className="block text-[7px] text-amber-600">Sup. Esquerdo</span>
+                  Estoque Baixo / Picking Cheio
+                </div>
+                <div className="bg-orange-50 border border-orange-100 p-1.5 rounded text-orange-800">
+                  <span className="block text-[7px] text-orange-600">Inf. Esquerdo</span>
+                  Necessidade Urgente
+                </div>
+              </div>
+            </div>
+
           </div>
 
-          <div className="bg-slate-50 rounded-xl p-4 mt-5 border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-            <p className="text-gray-500 leading-relaxed max-w-2xl">
-              💡 <strong>Regra Operacional do Armazém:</strong> Diferenças acima de 200 SKUs entre o estoque central e a rua de picking exigem tarefa de reposição urgente gerada automaticamente no painel do empilhador para evitar rupturas de carga de frota.
+          {/* Operational Guidance Panel */}
+          <div className="bg-slate-50 border border-gray-200 rounded-xl p-4.5 flex flex-col gap-3">
+            <h4 className="font-sans font-black text-xs uppercase text-[#032b5e] tracking-wider">
+              Análise Cruzada de Indicadores: Abastecimento de Picking
+            </h4>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse font-sans text-[11px]">
+                <thead>
+                  <tr className="bg-slate-100/80 border-b border-gray-200 text-gray-500 text-left uppercase tracking-wider text-[8px] font-black">
+                    <th className="p-2">Indicador / Gráfico</th>
+                    <th className="p-2">Objetivo Estratégico</th>
+                    <th className="p-2">Decisão de Negócio</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200/60">
+                  <tr>
+                    <td className="p-2 font-black text-slate-700">Heat Map de Rupturas</td>
+                    <td className="p-2 text-slate-600">Descobrir onde ocorre falta no picking mesmo com estoque no armazém.</td>
+                    <td className="p-2 text-[#032b5e] font-bold">Corrigir processos de abastecimento interno e corredores gargalo.</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 font-black text-slate-700">Scatter Estoque × Picking</td>
+                    <td className="p-2 text-slate-600">Identificar produtos mal distribuídos e distorções de estoque pulmão vs ativo.</td>
+                    <td className="p-2 text-emerald-700 font-bold">Balancear estoque entre reserva e picking gerando tarefas inteligentes.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[10px] text-gray-400 font-bold italic mt-1">
+              * Esses dois gráficos integrados são amplamente utilizados em operações de centros de distribuição para direcionar reabastecimentos antes que ocorram atrasos na separação dos pedidos de frota.
             </p>
-            <button 
-              onClick={() => {
-                const refreshed = pickingComp.map(p => ({
-                  ...p,
-                  qtdPicking: p.status === 'Desvio Crítico' ? p.qtdPicking + 300 : p.qtdPicking,
-                  diferenca: p.status === 'Desvio Crítico' ? p.qtdEstoque - (p.qtdPicking + 300) : p.diferenca,
-                  status: p.status === 'Desvio Crítico' ? 'Conforme' : p.status as any
-                }));
-                savePicking(refreshed);
-                alert('Reposições enviadas ao coletor do Empilhador! Picking atualizado.');
-              }}
-              className="bg-[#032b5e] hover:bg-[#021f44] text-white font-sans font-bold text-[10px] uppercase tracking-wider py-2.5 px-4 rounded-lg transition-all border-none cursor-pointer shadow-sm shrink-0"
-            >
-              Forçar Reposição de Picking
-            </button>
+          </div>
+
+          {/* Main Reconciliation Table */}
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-100 pb-4 mb-4">
+              <div>
+                <h3 className="font-sans font-black text-xs uppercase text-[#032b5e] tracking-wider">
+                  CONCILIAÇÃO FÍSICA E AJUSTES: ESTOQUE x PICKING
+                </h3>
+                <p className="text-[10px] text-gray-400 font-bold mt-0.5">Visão detalhada de diferenças volumétricas entre o depósito central e as ruas de picking</p>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1 text-[9.5px] font-bold text-gray-500 uppercase">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Conforme
+                </span>
+                <span className="flex items-center gap-1 text-[9.5px] font-bold text-gray-500 uppercase">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Atenção
+                </span>
+                <span className="flex items-center gap-1 text-[9.5px] font-bold text-gray-500 uppercase">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Desvio Crítico
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse font-sans text-xs min-w-[700px]">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-gray-200">
+                    <th className="p-3 text-gray-500 text-left uppercase tracking-wider text-[9px]">Produto</th>
+                    <th className="p-3 text-gray-500 text-left uppercase tracking-wider text-[9px]">Lote</th>
+                    <th className="p-3 text-gray-500 text-center uppercase tracking-wider text-[9px]">Validade</th>
+                    <th className="p-3 text-gray-500 text-right uppercase tracking-wider text-[9px]">Quantidade no Estoque</th>
+                    <th className="p-3 text-gray-500 text-right uppercase tracking-wider text-[9px]">Quantidade no Picking</th>
+                    <th className="p-3 text-gray-500 text-right uppercase tracking-wider text-[9px]">Diferença Física</th>
+                    <th className="p-3 text-gray-500 text-center uppercase tracking-wider text-[9px]">Status de Alinhamento</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {pickingComp.map((p, idx) => {
+                    const badgeColor = p.status === 'Conforme' ? 'bg-emerald-100 text-emerald-800' :
+                                       p.status === 'Atenção' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800';
+                    
+                    return (
+                      <tr key={idx} className="hover:bg-slate-50/55">
+                        <td className="p-3 font-semibold text-slate-800 uppercase">{p.produto}</td>
+                        <td className="p-3 font-mono font-bold text-gray-600">{p.lote}</td>
+                        <td className="p-3 text-center text-slate-700 font-medium">{p.validade}</td>
+                        <td className="p-3 text-right font-semibold text-slate-700">{p.qtdEstoque} cx</td>
+                        <td className="p-3 text-right font-semibold text-slate-700">{p.qtdPicking} cx</td>
+                        <td className="p-3 text-right font-black text-slate-900">{p.diferenca} cx</td>
+                        <td className="p-3 text-center">
+                          <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${badgeColor}`}>
+                            {p.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bg-slate-50 rounded-xl p-4 mt-5 border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+              <p className="text-gray-500 leading-relaxed max-w-2xl">
+                💡 <strong>Regra Operacional do Armazém:</strong> Diferenças acima de 200 SKUs entre o estoque central e a rua de picking exigem tarefa de reposição urgente gerada automaticamente no painel do empilhador para evitar rupturas de carga de frota.
+              </p>
+              <button 
+                onClick={() => {
+                  const refreshed = pickingComp.map(p => ({
+                    ...p,
+                    qtdPicking: p.status === 'Desvio Crítico' ? p.qtdPicking + 300 : p.qtdPicking,
+                    diferenca: p.status === 'Desvio Crítico' ? p.qtdEstoque - (p.qtdPicking + 300) : p.diferenca,
+                    status: p.status === 'Desvio Crítico' ? 'Conforme' : p.status as any
+                  }));
+                  savePicking(refreshed);
+                  alert('Reposições enviadas ao coletor do Empilhador! Picking atualizado.');
+                }}
+                className="bg-[#032b5e] hover:bg-[#021f44] text-white font-sans font-bold text-[10px] uppercase tracking-wider py-2.5 px-4 rounded-lg transition-all border-none cursor-pointer shadow-sm shrink-0"
+              >
+                Forçar Reposição de Picking
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1671,8 +1806,9 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
                 className="w-full p-2 border border-gray-300 rounded text-xs outline-none"
               >
                 <option value="TODAS">Todos os Endereços</option>
-                <option value="PICKING">Somente Picking</option>
-                <option value="CENTRAL">Somente Blocado Central</option>
+                <option value="CENTRAL">Estoque central</option>
+                <option value="PICKING">Picking</option>
+                <option value="MARKETPLACE">Marketing place</option>
               </select>
             </div>
 
@@ -1751,7 +1887,7 @@ export default function FefoDashboard({ user, empresa, onBack }: FefoDashboardPr
                         <td className="p-3 text-right font-black text-[#032b5e]">{v.totalUnities}</td>
                         <td className="p-3 text-center">
                           <span className="bg-slate-100 text-slate-800 text-[9px] font-bold uppercase px-2 py-0.5 rounded-full">
-                            {v.localizacao === 'picking' ? 'Pista de Picking' : 'Blocado Central'}
+                            {v.localizacao === 'central' ? 'Estoque central' : v.localizacao === 'picking' ? 'Picking' : 'Marketing place'}
                           </span>
                         </td>
                       </tr>

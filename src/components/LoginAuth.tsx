@@ -659,26 +659,14 @@ export default function LoginAuth({ onAuthSuccess, onBackToLanding }: LoginAuthP
         <div className="text-center mb-8 flex flex-col items-center">
           <motion.div 
             onClick={onBackToLanding} 
-            className="w-20 h-20 rounded-2xl bg-white flex items-center justify-center shadow-[0_10px_30px_rgba(30,86,240,0.08)] border border-slate-100 cursor-pointer mb-5"
-            whileHover={{ scale: 1.05 }}
-            animate={{ y: [0, -4, 0] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            className="cursor-pointer mb-5 flex justify-center"
+            whileHover={{ scale: 1.03 }}
+            transition={{ duration: 0.2 }}
           >
-            <BrandLogo size="lg" variant="icon-only" />
+            <BrandLogo variant="login" />
           </motion.div>
-          
-          <div className="flex items-center gap-1.5 font-sans font-black text-3xl tracking-wider uppercase select-none">
-            <span className="text-amber-600 font-extrabold">PAU</span>
-            <span className="text-[#1e56f0]">BRASIL</span>
-          </div>
-          
-          <div className="text-[10px] uppercase font-bold tracking-[3px] mt-1.5 flex items-center gap-1.5 text-slate-500">
-            <span>DISTRIBUIDORA</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b]" />
-            <span className="text-[#f59e0b] font-black">AMBEV</span>
-          </div>
 
-          <span className="text-xs uppercase font-extrabold tracking-[1px] text-slate-700 mt-6 block max-w-[340px] leading-tight text-center">
+          <span className="text-xs uppercase font-extrabold tracking-[1.5px] text-slate-700 mt-4 block max-w-[340px] leading-tight text-center">
             RETORNO DE ROTA — GUARABIRA
           </span>
           <span className="text-[11px] text-slate-500 mt-1.5 block max-w-[320px] leading-relaxed text-center font-medium">
