@@ -280,6 +280,7 @@ export default function RepackDashboard({ user, empresa, onBack }: RepackDashboa
   const [formInicio, setFormInicio] = useState('');
   const [formFim, setFormFim] = useState('');
   const [formOperador, setFormOperador] = useState(user.nome || 'Operador');
+  const [formMotivoNaoBaterMeta, setFormMotivoNaoBaterMeta] = useState('');
   const [timerActive, setTimerActive] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
 
@@ -333,6 +334,15 @@ export default function RepackDashboard({ user, empresa, onBack }: RepackDashboa
     const s = tot % 60;
     return [h, m, s].map(v => v < 10 ? '0' + v : v).join(':');
   };
+
+  const isFormAboveMeta = useMemo(() => {
+    if (!formInicio || !formFim) return false;
+    const activeMeta = EMBALAGENS_CONFIG[formEmbalagem]?.metaSec || 240;
+    const totalMetaSec = activeMeta * formQuantidade;
+    const durSec = timeToSec(formFim) - timeToSec(formInicio);
+    const spentSec = durSec < 0 ? durSec + 86400 : durSec;
+    return spentSec > totalMetaSec;
+  }, [formInicio, formFim, formEmbalagem, formQuantidade]);
 
   const todayISO = useMemo(() => new Date().toISOString().split('T')[0], []);
   
@@ -1081,6 +1091,12 @@ export default function RepackDashboard({ user, empresa, onBack }: RepackDashboa
     const spentSec = durSec < 0 ? durSec + 86400 : durSec;
     const result = spentSec <= totalMetaSec ? 'Dentro da meta' : 'Abaixo da meta';
 
+    const isAboveMeta = spentSec > totalMetaSec;
+    if (isAboveMeta && !formMotivoNaoBaterMeta.trim()) {
+      alert('Por favor, informe o motivo de não bater a meta.');
+      return;
+    }
+
     const newEntry: Omit<RepackRow, '_docId'> = {
       empresaId: empresa?.id || 'demo',
       data: today.toLocaleDateString('pt-BR'),
@@ -1093,6 +1109,7 @@ export default function RepackDashboard({ user, empresa, onBack }: RepackDashboa
       meta: formatSecToHMS(totalMetaSec),
       resultado: result,
       operador: formOperador,
+      motivoNaoBaterMeta: isAboveMeta ? formMotivoNaoBaterMeta.trim() : undefined,
       _criadoEm: today.toISOString()
     };
 
@@ -1104,6 +1121,7 @@ export default function RepackDashboard({ user, empresa, onBack }: RepackDashboa
       setFormQuantidade(10);
       setTimerSeconds(0);
       setTimerActive(false);
+      setFormMotivoNaoBaterMeta('');
     } catch(err) {
       console.error(err);
     }
@@ -2371,6 +2389,14 @@ export default function RepackDashboard({ user, empresa, onBack }: RepackDashboa
                       <span className="text-gray-400 font-bold uppercase text-[10px]">Tempo Médio Real</span>
                       <span className="font-bold font-mono text-slate-700">{selectedRowDetails.tempoMedioUnit}</span>
                     </div>
+                    {selectedRowDetails.row.motivoNaoBaterMeta && (
+                      <div className="flex flex-col gap-1 text-xs py-1.5 border-b border-gray-100">
+                        <span className="text-rose-500 font-bold uppercase text-[10px] flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" /> Motivo de Não Bater Meta
+                        </span>
+                        <span className="font-bold text-slate-700 bg-rose-50/50 border border-rose-100 p-2 rounded-lg break-words">{selectedRowDetails.row.motivoNaoBaterMeta}</span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="py-12 text-center text-gray-400 text-xs font-bold uppercase">
@@ -3093,6 +3119,22 @@ export default function RepackDashboard({ user, empresa, onBack }: RepackDashboa
                   />
                 </div>
               </div>
+
+              {isFormAboveMeta && (
+                <div className="flex flex-col gap-1 p-3 bg-rose-50 border border-rose-200 rounded-lg animate-fadeIn">
+                  <label className="text-rose-500 uppercase font-bold text-[9px] tracking-wider flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5" /> Motivo de Não Bater a Meta *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Embalagem danificada, queda de energia, etc..."
+                    value={formMotivoNaoBaterMeta}
+                    onChange={(e) => setFormMotivoNaoBaterMeta(e.target.value)}
+                    className="bg-white border border-rose-200 text-slate-800 rounded-lg p-2 focus:border-rose-500 outline-none text-xs"
+                    required
+                  />
+                </div>
+              )}
 
               <div className="flex items-center gap-3 pt-3">
                 <button

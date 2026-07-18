@@ -41,6 +41,7 @@ export interface RepackRow {
   meta: string;
   resultado: string;
   operador?: string;
+  motivoNaoBaterMeta?: string;
   _criadoEm?: string;
 }
 

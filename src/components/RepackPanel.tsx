@@ -50,6 +50,7 @@ export default function RepackPanel({ user, empresa }: RepackPanelProps) {
   const [fim, setFim] = useState<string>(() => getDraftValue('fim', ''));
   const [duracao, setDuracao] = useState('00:00:00');
   const [statusMeta, setStatusMeta] = useState('—');
+  const [motivoNaoBaterMeta, setMotivoNaoBaterMeta] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'form' | 'stats' | 'hist' | 'validade' | 'raci' | 'pop' | 'lup'>('form');
   const [repackRows, setRepackRows] = useState<RepackRow[]>([]);
   const [registering, setRegistering] = useState(false);
@@ -234,6 +235,13 @@ export default function RepackPanel({ user, empresa }: RepackPanelProps) {
 
   const handleRegister = async () => {
     if (!inicio || !fim) return;
+    
+    const isAboveMeta = statusMeta.includes('ACIMA');
+    if (isAboveMeta && !motivoNaoBaterMeta.trim()) {
+      alert('Por favor, informe o motivo de não bater a meta.');
+      return;
+    }
+
     setRegistering(true);
 
     const today = new Date();
@@ -254,6 +262,7 @@ export default function RepackPanel({ user, empresa }: RepackPanelProps) {
       meta: activeMeta,
       resultado: statusMeta,
       operador: user.nome,
+      motivoNaoBaterMeta: isAboveMeta ? motivoNaoBaterMeta.trim() : undefined,
     };
 
     try {
@@ -272,6 +281,7 @@ export default function RepackPanel({ user, empresa }: RepackPanelProps) {
       setFim('');
       setDuracao('00:00:00');
       setStatusMeta('—');
+      setMotivoNaoBaterMeta('');
       setActiveTab('hist');
       setDraftRestored(false);
       localStorage.removeItem(draftKey);
@@ -533,13 +543,20 @@ export default function RepackPanel({ user, empresa }: RepackPanelProps) {
                           <td className="py-3 px-3 font-mono text-[#6a7d92]">{r.inicio} - {r.fim}</td>
                           <td className="py-3 px-3 font-mono">{r.duracao}</td>
                           <td className="py-3 px-3">
-                            <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
-                              r.resultado?.includes('BATIDA') 
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                                : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                            }`}>
-                              {r.resultado}
-                            </span>
+                            <div className="flex flex-col gap-1">
+                              <span className={`w-fit px-2 py-0.5 rounded-md font-bold text-[10px] ${
+                                r.resultado?.includes('BATIDA') 
+                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                              }`}>
+                                {r.resultado}
+                              </span>
+                              {r.motivoNaoBaterMeta && (
+                                <span className="text-[10px] text-amber-500/90 font-medium">
+                                  Motivo: {r.motivoNaoBaterMeta}
+                                </span>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -669,9 +686,24 @@ export default function RepackPanel({ user, empresa }: RepackPanelProps) {
             </div>
           </div>
 
+          {statusMeta.includes('ACIMA') && (
+            <div className="flex flex-col gap-1.5 p-4 bg-[#ef4444]/5 border border-[#ef4444]/20 rounded-xl animate-fadeIn">
+              <label className="text-[10px] font-bold tracking-widest text-red-400 uppercase flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5" /> Motivo de Não Bater a Meta *
+              </label>
+              <input 
+                type="text"
+                placeholder="Ex: Embalagem danificada, queda de energia, ajuste de máquina..."
+                value={motivoNaoBaterMeta}
+                onChange={e => setMotivoNaoBaterMeta(e.target.value)}
+                className="g-input border-red-500/30 focus:border-red-500"
+              />
+            </div>
+          )}
+
           <button 
             type="button"
-            disabled={registering || !inicio || !fim || quantidade === '' || quantidade < 1}
+            disabled={registering || !inicio || !fim || quantidade === '' || quantidade < 1 || (statusMeta.includes('ACIMA') && !motivoNaoBaterMeta.trim())}
             onClick={handleRegister}
             className="w-full py-4 text-sm font-sans font-bold uppercase tracking-widest text-[#07090d] bg-gradient-to-br from-[#f5a623] to-[#d4780a] hover:shadow-[0_4px_16px_rgba(245,166,35,0.25)] rounded-xl disabled:opacity-50 cursor-pointer"
           >
@@ -756,7 +788,18 @@ export default function RepackPanel({ user, empresa }: RepackPanelProps) {
                               <td className="p-3 font-mono">{r.inicio}</td>
                               <td className="p-3 font-mono">{r.fim}</td>
                               <td className="p-3 font-mono text-snow font-bold">{r.duracao}</td>
-                              <td className={`p-3 font-sans font-black ${r.resultado.includes('BATIDA') ? 'text-[#22c55e]' : 'text-[#ef4444]'}`}>{r.resultado}</td>
+                              <td className="p-3 font-sans">
+                                <div className="flex flex-col gap-1">
+                                  <span className={`font-black ${r.resultado.includes('BATIDA') ? 'text-[#22c55e]' : 'text-[#ef4444]'}`}>
+                                    {r.resultado}
+                                  </span>
+                                  {r.motivoNaoBaterMeta && (
+                                    <span className="text-[10px] text-amber-500/90 font-medium max-w-[180px] break-words">
+                                      Motivo: {r.motivoNaoBaterMeta}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
                               <td className="p-3 text-right">
                                 <button 
                                   onClick={() => handleDelete(r._docId)}

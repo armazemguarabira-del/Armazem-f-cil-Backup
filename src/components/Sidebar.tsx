@@ -320,7 +320,7 @@ export default function Sidebar({
       {!mobileOpen && (
         <button 
           onClick={() => setMobileOpen(true)}
-          className={`fixed top-3 left-3 z-40 w-10 h-10 rounded-xl backdrop-blur-md text-lg flex items-center justify-center md:hidden cursor-pointer shadow-lg transition-all border ${
+          className={`fixed top-1.5 left-3 z-40 w-8 h-8 rounded-lg backdrop-blur-md text-sm flex items-center justify-center md:hidden cursor-pointer shadow-xs transition-all border ${
             theme === 'dark'
               ? 'bg-[#11151c]/90 border-[#222d3a] text-[#1e56f0]'
               : 'bg-white/90 border-slate-200 text-[#1e56f0] hover:bg-slate-50'
